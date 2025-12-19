@@ -17,7 +17,8 @@ This project is organized by application, for each application you will have a s
 ## What's new in releases :
 <details open><summary><b>4.0:</b></summary>
 
-### 📢 4.0 Release is coming soon ...!
+### 📢 4.0 Release is coming soon! Scheduled for January 22, 2026.
+- This release will introduce new features and important changes.
 </details>
                                                           
 <details open><summary><b>3.2:</b></summary>
