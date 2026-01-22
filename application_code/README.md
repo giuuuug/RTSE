@@ -24,9 +24,8 @@ For the other MCU and MPU platform, provided applications are documented below:
 - [Object detection on MPU](object_detection/STM32MP-LINUX/README.md)
 - [Pose estimation on MPU](pose_estimation/STM32MP-LINUX/README.md)
 - [Semantic segmentation on MPU](semantic_segmentation/STM32MP-LINUX/README.md)
-- [Human activity recognition using ThreadX on STM32U5](sensing_thread_x/STM32U5/README.md)
-- [Audio event detection using FreeRTOS on STM32U5](sensing_free_rtos/STM32U5/README.md)
-- [Audio event detection using ThreadX on STM32U5](sensing_thread_x/STM32U5/README.md)
+- [Human activity recognition on STM32U5](sensing/STM32U5/README.md)
+- [Audio event detection on STM32U5](sensing/STM32U5/README.md)
 - [Hand posture on STM32F4](hand_posture/STM32F4/README.md)
 
 
