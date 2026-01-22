@@ -32,6 +32,11 @@ The converted datasets will be saved in the ./pose_estimation/single/13kpts/trai
 Now that you have a dataset in YOLO Darknet format, you can use the paths to your dataset in the user_config.yaml and start working with ST Model zoo. 
 The import part here is the dataset part:
 
+> [!NOTE]
+> If your number of `keypoints` is different from `17`, the code will give equal an weight to each keypoint in the [OKS metric](../../tf/src/evaluation/metrics.py#L153).
+
+> [!IMPORTANT]  
+> If you want to have the connections between the keypoints for your dataset check out the [dictionnary](../../tf/src/utils/connections.py) to add your own connections as well as their colors.
 
 ```yaml
 # user_config.yaml 
@@ -40,8 +45,9 @@ The import part here is the dataset part:
 
 # part of the configuration file related to the dataset
 dataset:
-  name: <name-of-your-dataset>                                     # Dataset name. Optional
+  dataset_name: coco                                               # Dataset name
   keypoints: <your-nb-of-keypoints>                                # Number of keypoints
+  class_names: [<your-class>]                                      # Name of the class
   training_path: <training-set-directory>                          # Path to the root directory of the training set.
   validation_path: <validation-set-directory>                      # Path to the root directory of the validation set.
   validation_split: 0.1                                            # Training/validation sets split ratio.

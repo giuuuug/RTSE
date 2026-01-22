@@ -50,9 +50,13 @@ def serial_device_discovery() -> List:
         dev_list.append(elem)
 
     # re-order the list to put in priority the STLink-base connection (Virtual COM Port)
-    def sort_list_func(elem):
-        return 1 if 'STLink' in elem['desc'] else 0
-    dev_list.sort(key=sort_list_func, reverse=True)
+    def sort_list_func_st_vid(elem):
+        return 1 if '=0483' in elem['hwid'] else 0
+    dev_list.sort(key=sort_list_func_st_vid, reverse=True)
+
+    def sort_list_func_st_pid(elem):
+        return 1 if ':5740' in elem['hwid'] else 0
+    dev_list.sort(key=sort_list_func_st_pid, reverse=True)
 
     return dev_list
 

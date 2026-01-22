@@ -1,10 +1,17 @@
 general:
-   project_name: depth_estimation_fast_depth
-   model_path: ../../stm32ai-modelzoo/depth_estimation/fast_depth/Public_pretrainedmodel_public_dataset/nyu_depth_v2/fast_depth_320/fast_depth_320_int8_pc.tflite
-   model_type: fast_depth
+   project_name: depth_estimation_fastdepth
    display_figures : False
    
 operation_mode: prediction
+
+model:
+   model_path: ../../stm32ai-modelzoo/depth_estimation/fastdepth/Public_pretrainedmodel_public_dataset/nyu_depthv2/fastdepth_320/fastdepth_320_int8.tflite
+   model_type: fast_depth
+
+dataset: 
+  dataset_name: nyu_depthv2
+  prediction_path : ./datasets/nyu_depthv2/pred
+
 
 preprocessing:
   rescaling:
@@ -15,12 +22,9 @@ preprocessing:
     aspect_ratio: fit
   color_mode: rgb
 
-prediction:
-   test_files_path: ./datasets/NYU_depth_v2/pred
-
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}

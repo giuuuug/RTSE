@@ -42,8 +42,9 @@ class CloudBackend(Stm32AiBackend):
         self.silent = silent
         self.login_service = LoginService()
         try:
-            user_version = next(x for x in self.supportedVersions if x.get('platform',{}).get(platform, x['version']) == version)
-            self.version = user_version['version']
+#            user_version = next(x for x in self.supportedVersions if x.get('platform',{}).get(platform, x['version']) == version)
+#            self.version = user_version['version']
+            self.version = self.supportedVersions['version']
         except Exception as e:    
             print(
                 f'[WARN] Version {self.version} for platform {platform} is not supported by Developer Cloud.')

@@ -80,6 +80,7 @@ def stm32_id_to_str(dev_id):
         0x450: 'STM32H743/53/50xx and STM32H745/55/47/57xx',
         0x480: 'STM32H7A/7B',
         0x485: 'STM32H7[R,]Sxx',
+        0x47B: "STM32H7Pxxx",
 
         0x484: 'STM32H5x',
         0x474: 'STM32H503',
@@ -113,6 +114,9 @@ def stm32_id_to_str(dev_id):
 
         0x500: 'STM32MP1',
         0x486: 'STM32N6xx',
+        0x499: 'STM32V8xx',
+        0x42a: 'STM32U3xx',
+
         0x155: 'Corstone SSE-300 FVP',
 
         0x2511: 'SR5E1',
@@ -123,6 +127,7 @@ def stm32_id_to_str(dev_id):
         0x2636: 'SR6G6',
         0x2637: 'SR6G7',
         0x2A47: 'SR6P7G7',
+        0x2663: 'SR6P3E',
     }
     desc_ = f'0x{dev_id:X} - '
     desc_ += switcher.get(dev_id, 'UNKNOW')

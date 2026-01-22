@@ -1,10 +1,10 @@
-# How to deploy a model on a B-U585I-IOT02A board?
+# How to deploy a model on a B-U585I-IOT02A board ?
 
-This tutorial explains how to deploy a model from the ST public model zoo directly on your STM32 target board. In this version deployment on the B-U585I-IOT02A and [NAME OF N6 DK] is supported.
+This tutorial explains how to deploy a model from the ST public model zoo directly on your STM32 target board. In this version deployment on the B-U585I-IOT02A and [STM32N6750-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html) is supported.
 
 For a more detailed tutorial, look at this [tutorial](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/deployment)
 
-## Operation modes:
+## Operation modes
 
 Depending on what you want to do, you can use the operation modes below:
 - Deployment: 
@@ -15,27 +15,23 @@ Depending on what you want to do, you can use the operation modes below:
 For any details regarding the parameters of the config file, you can look to the [Deployment documentation](../README_DEPLOYMENT.md)
 
 
-## Deployment yaml configuration example:
+## Deployment yaml configuration example
 
 Below is an example of configuration file used to deploy a pretrained and quantized yamnet from ST Model Zoo on a B-U585I-IOT02A.
-You can find other example of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples)
+You can find other example of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples)
 
 The most important parts here are to define:
 - The model path of the model to be deployed. This model must be a quantized TFLite or ONNX QDQ model.
 - The operation mode to deployment
 - The name of the classes
 - Copy the preprocessing and feature extraction used during the training of the model (n_fft must be a power of 2)
-- Select the example code deployed (sensing_free_rtos or sensing_thread_x)
-- Set the target to B-U585I-IOT02A as it is the only one supported
+- Set the target to B-U585I-IOT02A
 - Select a way (or not) to handle unknown classes (see below)
-- Add your local path of STM32CubeIDE
+- Add your local path to STM32CubeIDE
 
-
-user_config.yaml
 ```yaml
 general:
   project_name: aed_project
-  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_256_64x96_tl/yamnet_256_64x96_tl_int8.tflite
   # Change this path to the model you wish to use
   logs_dir: logs
   saved_models_dir: saved_models
@@ -45,8 +41,11 @@ general:
 
 operation_mode: deployment
 
+model:
+  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_e256_64x96_tl/yamnet_e256_64x96_tl_int8.tflite
+
 dataset:
-  name: custom
+  dataset_name: custom
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves']
   file_extension: '.wav'
 
@@ -90,7 +89,6 @@ feature_extraction:
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     # edit paths to run
@@ -98,7 +96,7 @@ tools:
   path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe # Mandatory
   
 deployment:
-  c_project_path: ../stm32ai_application_code/sensing_free_rtos # sensing_free_rtos or sensing_thread_x
+  c_project_path: ../stm32ai_application_code/sensing/STM32U5
   IDE: GCC
   verbosity: 1
   hardware_setup:
@@ -108,16 +106,16 @@ deployment:
                                # Set to 0 to disable. To enable, set to any float between 0 and 1.
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples)
 
-## Run the script:
+## Run the script
 
 Edit the user_config.yaml then open a terminal (make sure to be in the UC folder). Finally, run the command:
 
@@ -138,21 +136,21 @@ To help solve this issue, there are two option available:
 
 **IMPORTANT NOTE:** These two methods are NOT COMPATIBLE, and cannot be used together. You must enable one or the other, or none at all. By default, in the yaml above, only the first option is in use.
 
-You can find all the information needed [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/deployment#3)
+You can find all the information needed [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/deployment#3).
 
-## Local deployment:
+## Local deployment
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI Core functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then run the installer.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
 ## Application on the board
 
 Once flashed the board can be connected through a serial terminal and the output of the inference can be seen in the serial terminal. 
-Find more information [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/deployment#5)
+Find more information [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/deployment#5).
 
 

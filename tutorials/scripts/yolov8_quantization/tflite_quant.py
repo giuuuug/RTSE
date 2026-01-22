@@ -14,7 +14,6 @@ import warnings
 import random
 import hydra
 import tqdm
-import cv2
 import pathlib
 
 import tensorflow as tf
@@ -46,6 +45,7 @@ def get_config(cfg):
 def main(cfg: DictConfig) -> None:
 
     def representative_data_gen():
+        import cv2
         if cfg.quantization.fake is True:
             for _ in tqdm.tqdm(range(5)):
                 data = np.random.rand(1, cfg.model.input_shape[0], cfg.model.input_shape[1], cfg.model.input_shape[2])

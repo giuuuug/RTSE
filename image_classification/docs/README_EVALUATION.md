@@ -1,6 +1,6 @@
 # Evaluation of Image Classification model
 
-Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their ONNX (float or QDQ), TensorFlow Lite (.tflite), or Keras (.h5) image classification models. By uploading their model and a validation set, users can quickly and easily evaluate the performance of their model and generate various metrics, such as accuracy.
+Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their ONNX (float or QDQ), TensorFlow Lite (.tflite), or Keras (.keras) image classification models. By uploading their model and a validation set, users can quickly and easily evaluate the performance of their model and generate various metrics, such as accuracy.
 
 The evaluation service is designed to be fast, efficient, and accurate, making it an essential tool for anyone looking to evaluate the performance of their image classification model.
  
@@ -8,19 +8,19 @@ The evaluation service is designed to be fast, efficient, and accurate, making i
 <details open>
 <summary><a href="#1"><b>1. Configure the YAML file</b></a></summary><a id="1"></a>
 
-To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
+To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
 
 Alternatively, you can follow the tutorial below, which shows how to evaluate your pre-trained image classification model using our evaluation service.
 
 <ul>
 <details open><summary><a href="#1-1">1.1 Set the model and the operation mode</a></summary><a id="1-1"></a>
 
-As mentioned previously, all the sections of the YAML file must be set in accordance with this **[evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml)**.
+As mentioned previously, all the sections of the YAML file must be set in accordance with this **[evaluation_config.yaml](../config_file_examples/evaluation_config.yaml)**.
 In particular, `operation_mode` should be set to evaluation and the `evaluation` section should be filled as in the following example: 
 
 ```yaml
-general:
-   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft/mobilenet_v2_0.35_128_fft.h5
+model:
+   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft/mobilenetv2_a035_128_fft.keras
 
 operation_mode: evaluation
 ```
@@ -40,7 +40,7 @@ Information about the dataset you want to use for evaluation is provided in the 
 
 ```yaml
 dataset:
-   dataset_name: flowers                                      # Dataset name. Optional, defaults to "<unnamed>".
+   dataset_name: tf_flowers                                      
    test_path: <test-set-root-directory>                       # Path to the root directory of the test set.
    check_image_files: False                                   # Enable/disable image file checking.
 ```
@@ -60,7 +60,7 @@ If you want to use a different split ratio, you need to specify the percentage t
 
 ```yaml
 dataset:
-   name: flowers
+   dataset_name: tf_flowers
    class_names: [daisy, dandelion, roses, sunflowers, tulips]
    training_path: ../datasets/flower_photos
    validation_path:
@@ -104,14 +104,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details>
@@ -126,15 +126,15 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can eval
 ```bash
 python stm32ai_main.py 
 ```
-If you chose to update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) and use it, then run the following command from the UC folder:
+If you chose to update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) and use it, then run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name evaluation_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name evaluation_config.yaml
 ```
-In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../src/config_file_examples/chain_eqeb_config.yaml)** example with the command below:
+In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../config_file_examples/chain_eqeb_config.yaml)** example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqeb_config.yaml
 ```
 
 </details>

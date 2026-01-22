@@ -38,8 +38,8 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml 
 
-general:
-   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplab_v3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/deeplab_v3_mobilenetv2_05_16_320/deeplab_v3_mobilenetv2_05_16_320_asppv2_qdq_int8.onnx
+model:
+   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplabv3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/st_deeplabv3_mnv2_a050_s16_asppv2_320/st_deeplabv3_mnv2_a050_s16_asppv2_320_qdq_int8.onnx
 
 operation_mode: benchmarking
 
@@ -54,7 +54,6 @@ preprocessing:
 
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -63,12 +62,14 @@ tools:
 benchmarking:
    board: STM32N6570-DK
 
+
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
+
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
@@ -77,8 +78,8 @@ Here is another example where we quantize the model first, then we launch the be
 ```yaml
 # user_config.yaml 
 
-general:
-   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplab_v3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/deeplab_v3_mobilenetv2_05_16_320/deeplab_v3_mobilenetv2_05_16_320_asppv2.h5
+model:
+   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplabv3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/st_deeplabv3_mnv2_a050_s16_asppv2_320/st_deeplabv3_mnv2_a050_s16_asppv2_320.keras
 
 operation_mode: chain_qb
 
@@ -98,12 +99,12 @@ quantization:
   quantization_type: PTQ
   quantization_input_type: float
   quantization_output_type: float
-  extra_options: calib_moving_average
+  onnx_extra_options: 
+    CalibMovingAverage: True
   export_dir: quantized_models
 
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -113,18 +114,20 @@ tools:
 benchmarking:
    board: STM32N6570-DK
 
+
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
+
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
 Here the quantization is made with random data as no data were provided and main goal was to have a quick insight on the performances of a quantized model for a specific HW. When evaluating the model, it is highly recommended to use real data for the final quantization of course.
 
-You can also find examples of user_config.yaml for any operation modes [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation modes [here](../../config_file_examples)
 
 
 ## Run the script:
@@ -141,11 +144,11 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Local benchmarking:
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then extract the files.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 

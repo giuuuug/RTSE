@@ -2,23 +2,26 @@
 
 
 ## Directory components:
-* [datasets](docs/README_DATASETS.md) placeholder for the image classification datasets.
-* [docs](docs/) contains all readmes and documentation specific to the image classification use case.
-* [src](docs/README_OVERVIEW.md) contains tools to train, evaluate, benchmark, quantize and deploy your model on your STM32 target.
+* [config_file_examples](config_file_examples/): collection of YAML configuration file examples for Tensorflow.
+* [config_file_examples_pt](config_file_examples_pt/): collection of YAML config file examples for Pytorch.
+* [datasets](datasets/): directory containing class names files for each supported dataset. 
+* [docs](docs/): contains all readmes and tutorials describing the allowed operation modes in Tensorflow or Pytorch and specific to the image classification use case.
+* [tf](tf/): contains Tensorflow tools to train, evaluate, benchmark, quantize and deploy your model on your STM32 target.
+* [pt](pt/): contains Pytorch tools to train, evaluate, benchmark, quantize and deploy your model on your STM32 target.
 
 ## Quick & easy examples:
 The `operation_mode` top-level attribute specifies the operations or the service you want to execute. This may be single operation or a set of chained operations.
 
 You can refer to readme links below that provide typical examples of operation modes, and tutorials on specific services:
 
-- [training, chain_tqe (train + quantize + evaluate), chain_tqeb](docs/README_TRAINING.md)
-- [quantization, chain_eqe, chain_qb](docs/README_QUANTIZATION.md)
-- [evaluation, chain_eqeb](docs/README_EVALUATION.md)
-- [benchmarking](docs/README_BENCHMARKING.md)
-- [prediction](docs/README_PREDICTION.md)
+- [training, chain_tqe (train + quantize + evaluate), chain_tqeb](docs/README_TRAINING.md) for Tensorflow 
+- [training, chain_tqe (train + quantize + evaluate), chain_tqeb](docs/README_TRAINING_TORCH.md) for Pytorch
+- [quantization, chain_eqe, chain_qb](docs/README_QUANTIZATION.md) for Tensorflow or Pytorch
+- [quantization, chain_eqe, chain_qb](docs/README_QUANTIZATION_TOOL.md) for advanced quantization parameters (exclusively based on ONNX-runtime)
+- [evaluation, chain_eqeb](docs/README_EVALUATION.md) for Tensorflow or Pytorch
+- [benchmarking](docs/README_BENCHMARKING.md) for Tensorflow or Pytorch
+- [prediction](docs/README_PREDICTION.md) for Tensorflow or Pytorch
 - deployment, chain_qd ([STM32H7](docs/README_DEPLOYMENT_STM32H7.md), [STM32N6](docs/README_DEPLOYMENT_STM32N6.md), [STM32MPU](docs/README_DEPLOYMENT_MPU.md))
-
-All .yaml configuration examples are located in [config_file_examples](./src/config_file_examples/) folder.
 
 The different values of the `operation_mode` attribute and the corresponding operations are described in the table below. In the names of the chain modes, 't' stands for training, 'e' for evaluation, 'q' for quantization, 'b' for benchmark and 'd' for deployment on an STM32 board.
 
@@ -37,7 +40,7 @@ The different values of the `operation_mode` attribute and the corresponding ope
 | `chain_eqeb`             | Sequentially: evaluation of a float model,  quantization, evaluation of quantized model, benchmarking of quantized model |
 | `chain_qd`               | Sequentially: quantization of a float model, deployment of quantized model |
 
-There is no model_type on the image classification use case, but [here](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/README.md) can be found the list of the available models.
+The list of the available models in [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) and a quick way to explore them by size, inference time...can be found in [Pytorch models](/docs/README_MODELS_TORCH.md) or in [Tensorflow models](/docs/README_MODELS.md) readmes.
 
 ## You don't know where to start? You feel lost?
 Don't forget to follow our tuto below for a quick ramp up : 
@@ -45,5 +48,6 @@ Don't forget to follow our tuto below for a quick ramp up :
 * [How can I fine tune a pretrained model on my own dataset?](docs/tuto/how_to_finetune_a_model_zoo_model_on_my_own_dataset.md)
 * [How can I check the accuracy after quantization of my model?](docs/tuto/how_to_compare_the_accuracy_after_quantization_of_my_model.md)
 * [How can I evaluate my model on STM32N6 target?](docs/tuto/how_to_evaluate_my_model_on_stm32n6_target.md)
+* [How to quickly benchmark the performance of a model?](docs/tuto/how_to_quickly_benchmark_the_performances_of_a_model.md)
 
-Remember that minimalistic yaml files are available [here](./src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that you have minimalistic YAML files available in [config_file_examples](config_file_examples/) for Tensorflow and in [config_file_examples_pt](config_file_examples_pt/) for Pytorch to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration YAML file used to generate them. These are very good starting points to start playing with!

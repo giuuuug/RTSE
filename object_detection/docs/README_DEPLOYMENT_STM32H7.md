@@ -1,6 +1,7 @@
 # Object Detection STM32 Model Deployment
 
-This tutorial shows how to deploy a pre-trained object detection model on an *STM32 board* using *STM32Cube.AI*.
+
+This tutorial shows how to deploy a pre-trained object detection model on an *STM32 board* using *STEdgeAI Core*.
 
 
 <details open><summary><a href="#1"><b>1. Before You Start</b></a></summary><a id="1"></a>
@@ -20,13 +21,12 @@ The [application code](../../application_code/object_detection/STM32H7/README.md
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Software Requirements</a></summary><a id="1-2"></a>
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires an internet connection and creating a free account. Alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI functionalities without installing the software. This requires an internet connection and creating a free account. Alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
 
 For local installation:
 
-- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
-The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
+- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) __v1.17.0__.
+-  Download and install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html).
 
 </details></ul>
 <ul><details open><summary><a href="#1-3">1.3 Specifications</a></summary><a id="1-3"></a>
@@ -42,24 +42,28 @@ The detailed instructions on installation are available in this [wiki article](h
 </details>
 <details open><summary><a href="#2"><b>2. Configure the YAML File</b></a></summary><a id="2"></a>
 
-To configure the deployment YAML, you can start from a minimalistic YAML example. If you want to deploy a model that is already quantized, you can use the [minimalistic deployment YAML example](../src/config_file_examples/deployment_config.yaml). If you want to quantize a model and then deploy it, you can use the [minimalistic quantization - deployment YAML example](../src/config_file_examples/chain_qd_config.yaml). Replace the fields according to your model. You can run a demo using a [pretrained model](./README_MODELS.md) from [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/). Please refer to the YAML file provided alongside the TFlite model to fill the following sections.
+To configure the deployment YAML, you can start from a minimalistic YAML example. If you want to deploy a model that is already quantized, you can use the [minimalistic deployment YAML example](../config_file_examples/deployment_config.yaml). If you want to quantize a model and then deploy it, you can use the [minimalistic quantization - deployment YAML example](../config_file_examples/chain_qd_config.yaml). Replace the fields according to your model. You can run a demo using a [pretrained model](./README_MODELS.md) from [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/). Please refer to the YAML file provided alongside the TFlite model to fill the following sections.
 
-As an example, we will show how to deploy the model [ssd_mobilenet_v2_fpnlite_035_192_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/ssd_mobilenet_v2_fpnlite/ST_pretrainedmodel_public_dataset/coco_2017_person/ssd_mobilenet_v2_fpnlite_035_192) pretrained on the COCO dataset using the necessary parameters provided in [ssd_mobilenet_v2_fpnlite_035_192_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/ssd_mobilenet_v2_fpnlite/ST_pretrainedmodel_public_dataset/coco_2017_person/ssd_mobilenet_v2_fpnlite_035_192/ssd_mobilenet_v2_fpnlite_035_192_config.yaml).
+As an example, we will show how to deploy [st_yoloxn_d033_w025_416_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_int8.tflite) pre-trained on the COCO 2017 person dataset using the necessary parameters provided in [st_yoloxn_d033_w025_416_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_config.yaml). To get this model, clone the [ModelZoo repo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) in the same folder you cloned the [STM32 ModelZoo services repo](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/).
+
 
 <ul><details open><summary><a href="#2-1">2.1 Setting the Model and the Operation Mode</a></summary><a id="2-1"></a>
 
-Configure the **general** section in **[user_config.yaml](../user_config.yaml)** as follows:
+Configure the **general** and the **model** section in **[user_config.yaml](../user_config.yaml)** as follows:
 ```yaml
 general:
   project_name: coco_person_detection
-  model_type: ssd_mobilenet_v2_fpnlite
-  model_path: ./pretrained_models/ssd_mobilenet_v2_fpnlite/ST_pretrainedmodel_public_dataset/coco_2017_person/ssd_mobilenet_v2_fpnlite_035_192/ssd_mobilenet_v2_fpnlite_035_192_int8.tflite
+
+model:
+  model_type: st_yoloxn # \'yolov2t', 'yolov4', 'yolov4t', 'st_yololcv1', 'st_yoloxn', 'yolov8n', 'yolov11n'
+  # path to a `.tflite` or `.onnx` file.
+  model_path: ../../../stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_int8.tflite
 ```
 
 where:
 
 - `project_name` - *String*, name of the project.
-- `model_type` - *String*, model type is used to adapt the postprocessing to the model. There are three possible choices: `'st_ssd_mobilenet_v1'`, `'ssd_mobilenet_v2_fpnlite'`, `'tiny_yolo_v2'`, `'st_yolo_lc_v1'`, `'st_yolo_x'`, `'yolo_v8'`, `'yolo_v11'`, `'yolo_v5u'`.
+- `model_type` - *String*, model type is used to adapt the postprocessing to the model. There are three possible choices: `'yolov2t'`, `'st_yololcv1'`, `'st_yoloxn'`, `'yolov8n'`, `'yolov11n'`, `'yolov5u'`.
 - `model_path` - *Path* to pretrained model. Please check out pretrained models from STM32 model zoo [here](./README_MODELS.md).
 
 Configure the **operation_mode** section as follows:
@@ -67,7 +71,7 @@ Configure the **operation_mode** section as follows:
 operation_mode: deployment
 ```
 where:
-- operation_mode - *String*, operation to be executed when the stm32ai_main.py script is launched. In the case of the deployment, the choices are: `'deployment'` if the model is already quantized, or `'chain_qd'` if the model is not quantized. 
+- operation_mode - *String*, operation to be executed when the stm32ai_main.py script is launched. In the case of the deployment, the choices are: `'deployment'` if the model is already quantized, or `'chain_qd'` if the model is not quantized.
 
 </details></ul>
 <ul><details open><summary><a href="#2-2">2.2 Dataset configuration</a></summary><a id="2-2"></a>
@@ -80,12 +84,14 @@ Configure the **dataset** section in **[user_config.yaml](../user_config.yaml)**
 
 ```yaml
 dataset:
-  name: person_dataset
+  format: tfs
+  dataset_name: custom_dataset
   class_names: [person]
 ```
 
 where:
-- `name` - Dataset name.
+- `format` - The dataset format.
+- `dataset_name` - Dataset name.
 - `class_names` - A list containing the class names. The `classes_name_file` argument can be used as an alternative, pointing to a text file containing the class names.
 
 </details></ul>
@@ -129,14 +135,13 @@ postprocessing:
 </details></ul>
 <ul><details open><summary><a href="#2-3">2.3 Deployment parameters</a></summary><a id="2-3"></a>
 
-To deploy the model on the **STM32H747I-DISCO** board, we will use *STM32Cube.AI* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
+To deploy the model on the **STM32H747I-DISCO** board, we will use *STEdgeAI* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
 
 These steps will be done automatically by configuring the **tools** and **deployment** sections in the YAML file as follows:
 
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -153,9 +158,8 @@ deployment:
 where:
 
 - `tools/stedgeai`
-  - `version` - Specify the **STM32Cube.AI** version used to benchmark the model, e.g. **8.0.1**.
   - `optimization` - *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
-  - `on_cloud` - *Boolean*, to use or not the [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home).
+  - `on_cloud` - *Boolean*, to use or not the [STEdgeAI Developer Cloud](https://stedgeai-dc.st.com/home).
   - `path_to_stedgeai` - *Path* to stedgeai executable file to use local download, else **False**.
 - `tools/path_to_cubeIDE` - *Path* to stm32cubeide executable file.
 - `deployment`
@@ -173,14 +177,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -196,18 +200,18 @@ The picture below shows how to connect the camera board to the *STM32H747I-DISCO
 If you chose to modify the [user_config.yaml](../user_config.yaml), you can deploy the model by running the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py 
+python stm32ai_main.py
 ```
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_config.yaml](../config_file_examples/deployment_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_config.yaml
 ```
 
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../src/config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```
 
 When the application is running on the *STM32H747I-DISCO* discovery board, the LCD displays the following information:

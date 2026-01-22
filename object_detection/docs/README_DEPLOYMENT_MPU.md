@@ -24,11 +24,11 @@ To install X-LINUX-AI on your target device, please follow the dedicated wiki pa
 
 - X-LINUX-AI expansion package: https://wiki.st.com/stm32mpu/wiki/Category:X-LINUX-AI_expansion_package
 
-To facilitate the deployment and avoid tools installation, the MPU deployment is based on [ST Edge AI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and creating a free account.
+To facilitate the deployment and avoid tools installation, the MPU deployment is based on [STEdge AI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI functionalities without installing the software. This requires an internet connection and creating a free account.
 
-You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/) or your own object detection model. Please refer to the YAML file [deployment_mpu_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/) or your own object detection model. Please refer to the YAML file [deployment_mpu_config.yaml](../config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
-As an example, we will show how to deploy the model [ssd_mobilenet_v2_fpnlite_10_256_int8_pt.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/object_detection/ssd_mobilenet_v2_fpnlite/Public_pretrainedmodel_public_dataset/coco_2017/ssd_mobilenet_v2_fpnlite_10_256/ssd_mobilenet_v2_fpnlite_10_256_int8_pt.tflite) pre-trained on the Coco 2017 (80 classes) dataset using the necessary parameters provided in [ssd_mobilenet_v2_fpnlite_10_256_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/ssd_mobilenet_v2_fpnlite/Public_pretrainedmodel_public_dataset/coco_2017/ssd_mobilenet_v2_fpnlite_10_256/ssd_mobilenet_v2_fpnlite_10_256_config.yaml).
+As an example, we will show how to deploy [st_yoloxn_d033_w025_416_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_int8.tflite) pre-trained on the COCO 2017 person dataset using the necessary parameters provided in [st_yoloxn_d033_w025_416_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_config.yaml). To get this model, clone the [ModelZoo repo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) in the same folder you cloned the [STM32 ModelZoo services repo](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/).
 
 </details></ul>
 </details>
@@ -40,13 +40,18 @@ The first section of the configuration file is the `general` section that provid
 
 ```yaml
 general:
-   model_path: ./pretrained_models/ssd_mobilenet_v2_fpnlite/Public_pretrainedmodel_public_dataset/coco_2017/ssd_mobilenet_v2_fpnlite_10_256/ssd_mobilenet_v2_fpnlite_10_256_int8_pt.tflite
-   model_type: ssd_mobilenet_v2_fpnlite
+  project_name: coco_person_detection
+
+model:
+  model_type: st_yoloxn # \'yolov2t', 'yolov4', 'yolov4t', 'st_yololcv1', 'st_yoloxn', 'yolov8n', 'yolov11n'
+  # path to a `.tflite` or `.onnx` file.
+  model_path: ../../../stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_int8.tflite
+
 operation_mode: deployment
 ```
 
 In the `general` section, users must provide the path to their model file using the `model_path` attribute. This can be either a Keras model file with a `.h5` filename extension (float model), a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
-In this example, the path to the MobileNet V2 model is provided in the `model_path` parameter. Please check out the [STM32 model zoo information](./README_MODELS.md) for more object detection models.
+In this example, the path to the ST YOLOXn model is provided in the `model_path` parameter. Please check out the [STM32 model zoo information](./README_MODELS.md) for more object detection models.
 
 You must copy the `preprocessing` section to your own configuration file to ensure you have the correct preprocessing parameters.
 
@@ -83,7 +88,7 @@ preprocessing:
 </details></ul>
 <ul><details open><summary><a href="#2-3">2.3 Deployment parameters</a></summary><a id="2-3"></a>
 
-To deploy the model in **STM32MPU** boards, you can use either TensorFlow Lite or ONNX models on MP1, the computation will be done on CPU. For MP2, the TensorFlow Lite or ONNX model will be automatically converted to NBG model using *STM32 developer cloud* functionalities.
+To deploy the model in **STM32MPU** boards, you can use either TensorFlow Lite or ONNX models on MP1, the computation will be done on CPU. For MP2, the TensorFlow Lite or ONNX model will be automatically converted to NBG model using *STM32 STEdgeAI  developer cloud* functionalities.
 
 The application code and the model will be deployed on the board through SSH.
 
@@ -94,7 +99,6 @@ dataset:
    classes_file_path: ../application_code/object_detection/STM32MP-LINUX/Resources/labels_coco_dataset_80.txt
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -111,7 +115,7 @@ deployment:
 ```
 
 where:
-- `on_cloud` - *Bool* enable usage of STM32 developer cloud
+- `on_cloud` - *Bool* enable usage of STM32 STEdgeAI developer cloud
 - `c_project_path` - *Path* to [X-LINUX-AI application code](../../application_code/object_detection/STM32MP-LINUX/README.md) project.
 - `classes_file_path` - *Path* to Dataset labels file path.
 - `board_deploy_path` - *Path* to the on target application deployment directory
@@ -127,14 +131,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -148,16 +152,16 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can depl
 ```bash
 python stm32ai_main.py
 ```
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_config.yaml](../config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_mpu_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_mpu_config.yaml
 ```
 
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../src/config_file_examples/chain_qd_config.yaml) file and then run the following command from the `src/` folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the `src/` folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```
 
 When the application is running on the *STM32MPU* board, the LCD displays the following information:

@@ -9,13 +9,13 @@ A script that plots the learning rate schedule without running a training is ava
 
 We encourage you to run this script. It does not require any extra work as it only needs your configuration file. It may save you a lot of time to choose a learning rate scheduler and tune its parameters.
 
-You can use the script to vizualize the output of the learning rate schedulers that are presented in the following sections. Just copy the examples and paste them to a configuration file. Then you can launch the script as proposed below:
+You can use the script to visualize the output of the learning rate schedulers that are presented in the following sections. Just copy the examples and paste them to a configuration file. Then you can launch the script as proposed below:
 
 ```bash
-python plot_lr_schedule.py --config-path ../../ --config-name user_config.yaml --fname plot.png
+python plot_lr_schedule.py --config-path ../../../../ --config-name user_config.yaml --fname plot.png
 ```
 
-This will plot the learning rate schedule used in /src/user_config.yaml and save the plotted curve in /src/training/lr_schedule/plot.png file
+This will plot the learning rate schedule used in user_config.yaml and save the plotted curve in tf/src/training/lr_schedule/plot.png file
 
 Note that the script cannot be used with the Tensorflow *ReduceLROnPlateau* scheduler as the learning rate schedule is only available after training.
 </details>

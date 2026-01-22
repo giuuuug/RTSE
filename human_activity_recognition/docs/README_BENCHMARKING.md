@@ -1,40 +1,40 @@
 # Benchmarking of Human Activity Recognition (HAR) models
 
-The benchmarking functionality of the Human Activity Recognition models enables users to evaluate the performance of their pretrained Keras (.h5) models. With this service, users can easily configure the settings of STM32Cube.AI to benchmark the .h5 models and generate various metrics, including memory footprints (RAM and FLASH) and inference time. The provided scripts can perform benchmarking by utilizing the [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) to benchmark on different STM32 target devices or by using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to estimate the memory footprints. Alternatively, a locally installed STM32Cube.AI CLI application can be used for estimating the memory footprints (RAM and FLASH).
+The benchmarking functionality of the Human Activity Recognition (HAR) models enables users to evaluate the performance of their pretrained Keras (.h5, and .keras) models. With benchmarking service, users can easily configure the settings of STEdge AI Core to benchmark the keras models and generate various metrics, including memory (RAM and FLASH) and computational (MACs and inference time) footprints. The provided scripts can perform benchmarking by either utilizing the [STEdge AI Developer Cloud](https://stedgeai-dc.st.com/home) to benchmark on different STM32 target boards, or by using [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to estimate (only) the memory footprints locally.
 
 ## <a id="">Table of contents</a>
 
 <details open><summary><a href="#1"><b>1. Configure the yaml file</b></a></summary><a id="1"></a> 
 
-To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [benchmarking_config.yaml](../src/config_file_examples/benchmarking_config.yaml) file and use it. This file provides an example of how to configure the benchmarking service to meet your specific needs.
-
-Alternatively, you can follow the tutorial below, which shows how to benchmark your pretrained Human Activity Recognition model using our benchmarking service.
+To use this service and achieve your goals, you can use either the [user_config.yaml](../user_config.yaml) or directly update and use the [benchmarking_config.yaml](../config_file_examples/benchmarking_config.yaml) file. This document provides an example of how to configure the benchmarking service to meet your specific needs.
 
 <ul><details open><summary><a href="#1-1">1.1 Setting the model and the operation mode</a></summary><a id="1-1"></a>
 
-As mentioned previously, users can either use the minimalistic example [configuration file for the benchmarking](../src/config_file_examples/benchmarking_config.yaml) file or alternatively follow the steps below to modify all the sections of the [user_config.yaml](../user_config.yaml) main YAML file. 
+As mentioned previously, users can either use the minimalistic example [configuration file for the benchmarking](../config_file_examples/benchmarking_config.yaml) file or alternatively follow the steps below to modify all the sections of the [user_config.yaml](../user_config.yaml) main YAML file. 
 
-The first thing to be configured is the `general.model_path` in the general section to point to the Keras model that has to be benchmarked.
+The first thing to be configured is the operation_mode in the configuration file. Set it to `benchmarking`.
 
 ```yaml
 general:
-  project_name: human_activity_recognition # optional, if not provided <human_activity_recognition> is used
-  model_path:  ../../stm32ai-modelzoo/human_activity_recognition/ign/ST_pretrainedmodel_custom_dataset/mobility_v1/ign_wl_24/ign_wl_24.h5
-              # could be a pretrained (.h5) model from the ../pretrained_models or any model user trained. 
-```
-
-Further, the most important part is to set the `operation_mode` variable, which should be set to `benchmarking`: 
-
-```yaml
+  project_name: human_activity_recognition # optional, if not provided <human_activity_recognition> is used 
 operation_mode: benchmarking
+
 ```
 
 </details></ul>
-<ul><details open><summary><a href="#1-2">1.2 Set benchmarking tools and parameters</a></summary><a id="1-2"></a>
+<ul><details open><summary><a href="#1-2">1.2 Set model path for the benchmarking</a></summary><a id="1-2"></a>
+The model that is to be benchmarked is provided through setting the model path in the `model.model_path` parameter in the configuration file, as shown below:
 
-The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target boards. To do this, the user will need an internet connection and a free account on [st.com](https://www.st.com). Also, the user needs to set the `on_cloud` attribute to `True`. Alternatively, you can use a locally installed CLI of [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to benchmark your model and estimate its footprints for STM32 target devices locally (no inference time with this option). To do this, make sure to provide the path to the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to `False`.
+```yaml
+model:
+  model_path: ../../stm32ai-modelzoo/human_activity_recognition/st_ign/ST_pretrainedmodel_custom_dataset/mobility_v1/st_ign_wl_24/st_ign_wl_24.keras # mandatory
+```
+</details></ul>
+<ul><details open><summary><a href="#1-3">1.3 Set benchmarking tools and parameters</a></summary><a id="1-3"></a>
 
-The `version` attribute specifies the **STM32Cube.AI** version used to benchmark the model, e.g. `9.1.0` or `10.0.0`, and the `optimization` defines the optimization used to generate the C-model. Available choices are: 
+The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target boards. To do this, the user will need an internet connection and a free account on [st.com](https://www.st.com). Also, the user needs to set the `on_cloud` attribute to `True`. Alternatively, you can use a locally installed CLI of [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to benchmark your model and estimate its footprints for STM32 target devices locally (no inference time with this option). To do this, make sure to provide the path to the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to `False`.
+
+The `optimization` defines the optimization used to generate the C-model. Available choices are: 
 - balanced (default option, uses a balanced approach for optimizing the RAM and inference time)
 - time (optimizes for the best inference time and can result in a bigger RAM consumption)
 - ram (optimizes for the best RAM size and can result in a longer inference time)
@@ -44,7 +44,6 @@ After the configuration of these parameters, the sections of the configuration f
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -52,14 +51,13 @@ tools:
   path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe
 
 benchmarking:
-   board: NUCLEO-F401RE     # Name of the STM32 board to benchmark the model on
+   board: B-U585I-IOT02A     # Name of the STM32 board to benchmark the model on
           # available choices
           # [STM32H747I-DISCO, STM32H7B3I-DK, STM32F469I-DISCO, B-U585I-IOT02A,
           # STM32L4R9I-DISCO, NUCLEO-H743ZI2, STM32H747I-DISCO, STM32H735G-DK,
           # STM32F769I-DISCO, NUCLEO-G474RE, NUCLEO-F401RE, STM32F746G-DISCO]
 
 ```
-
 </details></ul>
 </details>
 <details open><summary><a href="#2"><b>2. Benchmark your model</b></a></summary><a id="2"></a>
@@ -69,15 +67,15 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can benc
 ```bash
 python stm32ai_main.py
 ```
-If you chose to update the [benchmarking_config.yaml](../src/config_file_examples/benchmarking_config.yaml) and use it, then run the following command from the UC folder: 
+If you chose to update the [benchmarking_config.yaml](../config_file_examples/benchmarking_config.yaml) and use it, then run the following command from the UC folder: 
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name benchmarking_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name benchmarking_config.yaml
 ```
 Note that you can also overwrite the parameters directly in the CLI by using a provided YAML file. An example of overwriting the `operation_mode` and `model_path` is given below:
 
 ```bash
-python stm32ai_main.py operation_mode='benchmarking' general.model_path='../pretrained_models/ign/ST_pretrainedmodel_custom_dataset/mobility_v1/ign_wl_24/ign_wl_24.h5'
+python stm32ai_main.py operation_mode='benchmarking' model.model_path='../pretrained_models/ign/ST_pretrainedmodel_custom_dataset/mobility_v1/ign_wl_24/ign_wl_24.h5'
 ```
 
 </details>

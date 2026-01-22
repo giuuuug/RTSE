@@ -18,22 +18,16 @@ import tensorflow as tf
 from omegaconf import DictConfig
 import mlflow
 import argparse
-import logging
-from typing import Optional
 from clearml import Task
 from clearml.backend_config.defs import get_active_config_file
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
-from common.utils import mlflow_ini, set_gpu_memory_limit, get_random_seed, display_figures, log_to_file
-from common.benchmarking import benchmark, cloud_connect
-from common.evaluation import gen_load_val
+from api import get_model, get_dataloaders, get_predictor
+from common.utils import mlflow_ini, set_gpu_memory_limit, get_random_seed, log_to_file
+from common.benchmarking import benchmark
 from common.prediction import gen_load_val_predict
-from src.preprocessing import preprocess
-from src.utils import get_config
-from src.prediction import predict
-
+from depth_estimation.tf.src.utils import get_config
 
 # This function turns Tensorflow's eager mode on and off.
 # Eager mode is for debugging the Model Zoo code and is slower.
@@ -41,14 +35,8 @@ from src.prediction import predict
 tf.config.run_functions_eagerly(False)
 
 
-
-
 def process_mode(mode: str = None,
-                 configs: DictConfig = None,
-                 train_ds: tf.data.Dataset = None,
-                 valid_ds: tf.data.Dataset = None,
-                 quantization_ds: tf.data.Dataset = None,
-                 test_ds: tf.data.Dataset = None) -> None:
+                 configs: DictConfig = None,) -> None:
     """
     Process the selected mode of operation.
 
@@ -65,21 +53,21 @@ def process_mode(mode: str = None,
         ValueError: If an invalid operation_mode is selected or if required datasets are missing.
     """
 
-    mlflow.log_param("model_path", configs.general.model_path)
+    mlflow.log_param("model_path", configs.model.model_path)
     # logging the operation_mode in the output_dir/stm32ai_main.log file
     log_to_file(configs.output_dir, f'operation_mode: {mode}')
+    # Always get the model object at the start
+    model = get_model(configs)
+    dataloaders = get_dataloaders(configs)
+    
     # Check the selected mode and perform the corresponding operation
-   
     if mode == 'prediction':
-        # Generates the model to be loaded on the stm32n6 device using stedgeai core,
-        # then loads it and validates in on the device if required.
         gen_load_val_predict(cfg=configs)
-        # Launches prediction on the target through the model zoo prediction service
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
-        predict(cfg=configs)
-        print('[INFO] : Prediction complete.')
+        predictor = get_predictor(cfg=configs, model=model, dataloaders=dataloaders)
+        predictor.predict()
     elif mode == 'benchmarking':
-        benchmark(cfg=configs)
+        benchmark(cfg=configs, model_path_to_benchmark=configs.model.model_path)
         print('[INFO] : Benchmark complete.')
     # Raise an error if an invalid mode is selected
     else:
@@ -88,7 +76,7 @@ def process_mode(mode: str = None,
     # Record the whole hydra working directory to get all info
     mlflow.log_artifact(configs.output_dir)
     if mode in ['benchmarking', 'chain_qb', 'chain_eqeb', 'chain_tqeb']:
-        mlflow.log_param("stm32ai_version", configs.tools.stm32ai.version)
+        mlflow.log_param("stedgeai_core_version", configs.tools.stedgeai.version)
         mlflow.log_param("target", configs.benchmarking.board)
     # logging the completion of the chain
     log_to_file(configs.output_dir, f'operation finished: {mode}')
@@ -122,7 +110,7 @@ def main(cfg: DictConfig) -> None:
         else:
             print("[WARNING] The usable GPU memory is unlimited.\n"
                   "Please consider setting the 'gpu_memory_limit' attribute "
-                  "in the 'general' section of your configuration file.")
+                  "in the 'general' section of your configuration file")
 
     # Parse the configuration file
     cfg = get_config(cfg)
@@ -148,11 +136,8 @@ def main(cfg: DictConfig) -> None:
 
     # Extract the mode from the command-line arguments
     mode = cfg.operation_mode
-    preprocess_output = preprocess(cfg=cfg)
-    train_ds, valid_ds, quantization_ds, test_ds = preprocess_output
-    # Process the selected mode
-    process_mode(mode=mode, configs=cfg, train_ds=train_ds, valid_ds=valid_ds, quantization_ds=quantization_ds,
-                 test_ds=test_ds)
+        # Process the selected mode
+    process_mode(mode=mode, configs=cfg)
 
 
 if __name__ == "__main__":

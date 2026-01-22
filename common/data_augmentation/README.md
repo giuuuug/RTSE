@@ -120,7 +120,7 @@ To run the script, change the current directory to *\<MODEL-ZOO-ROOT\>/image_cla
 
 | Argument | Type | Default | Usage |
 |:---------|:------|:------|:----------------------|
-| dataset | String | None | Path to the root directory of a dataset in the ImageNet format (such as Flowers or PlantLeafDiseases) or a path to a directory containing images |
+| dataset | String | None | Path to the root directory of a dataset in the imagenet format (such as Flowers or PlantLeafDiseases) or a path to a directory containing images |
 | num_images | Integer | 8 | Number of images to sample, augment and display |
 | image_size | Tuple of 2 integers | (224, 224) | Image resizing size |
 | interpolation | String | "bilinear" | Image resizing method, one of {"bilinear", "nearest", "bicubic", "area", "lanczos3", "lanczos5", "gaussian", "mitchellcubic"} |

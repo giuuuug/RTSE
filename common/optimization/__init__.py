@@ -6,6 +6,5 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 
-
-from .bn_weights_folding import bw_bn_folding, insert_layer_in_graph
 from .model_formatting_ptq_per_tensor import model_formatting_ptq_per_tensor
+from .bn_folding import fold_bn

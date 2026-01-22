@@ -10,23 +10,27 @@ The `operation_mode` top-level attribute specifies the operations or the service
 
 You can refer to readme links below that provide typical examples of operation modes, and tutorials on specific services:
 
+   - [training, chain_tqe, chain _tqeb](./docs/README_TRAINING.md)
    - [quantization, chain_eqe, chain_qb](./docs/README_QUANTIZATION.md)
    - [evaluation, chain_eqeb](./docs/README_EVALUATION.md)
    - [benchmarking](./docs/README_BENCHMARKING.md)
    - [prediction](./docs/README_PREDICTION.md)
    - deployment, chain_qd ([STM32N6](./docs/README_DEPLOYMENT_STM32N6.md), [STM32MPU](./docs/README_DEPLOYMENT_MPU.md))
 
-All .yaml configuration examples are located in [config_file_examples](./src/config_file_examples/) folder.
+All .yaml configuration examples are located in [config_file_examples](./config_file_examples/) folder.
 
 The different values of the `operation_mode` attribute and the corresponding operations are described in the table below. In the names of the chain modes, 'e' stands for evaluation, 'q' for quantization, 'b' for benchmark and 'd' for deployment on an STM32 board.
 
 | operation_mode attribute | Operations |
 |:---------------------------|:-----------|
+| `training`| Train a model from the variety of heatmaps single pose estimation models in the model zoo **(BYOD)** or your own model with the same model type **(BYOM)** |
 | `evaluation` | Evaluate the accuracy of a float or quantized model on a test or validation dataset|
 | `quantization` | Quantize a float model |
 | `prediction`   | Predict the classes some images belong to using a float or quantized model |
 | `benchmarking` | Benchmark a float or quantized model on an STM32 board |
 | `deployment`   | Deploy a model on an STM32 board |
+| `chain_tqeb`  | Sequentially: training, quantization of trained model, evaluation of quantized model, benchmarking of quantized model |
+| `chain_tqe`    | Sequentially: training, quantization of trained model, evaluation of quantized model |
 | `chain_eqe`    | Sequentially: evaluation of a float model,  quantization, evaluation of the quantized model |
 | `chain_qb`     | Sequentially: quantization of a float model, benchmarking of quantized model |
 | `chain_eqeb`   | Sequentially: evaluation of a float model,  quantization, evaluation of quantized model, benchmarking of quantized model |
@@ -52,4 +56,4 @@ Don't forget to follow our tuto below for a quick ramp up :
 * [How can I deploy an Ultralytics Yolov8 pose estimation model?](./docs/tuto/How_to_deploy_yolov8_pose_estimation.md)
 * [How can I evaluate my model on STM32N6 target?](./docs/tuto/how_to_evaluate_my_model_on_stm32n6_target.md)
 
-Remember that minimalistic yaml files are available [here](./src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that minimalistic yaml files are available [here](./config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!

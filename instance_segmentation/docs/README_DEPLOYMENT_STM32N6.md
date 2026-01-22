@@ -49,15 +49,15 @@ To deploy your model, you need to fill a YAML configuration file with your tools
 
 As an example, we will show how to deploy [yolov8n_256_quant_pc_ii_seg_coco-st.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/instance_segmentation/yolov8n_seg) pre-trained on the COCO person dataset using the necessary parameters provided in [yolov8n_seg_256_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/instance_segmentation/yolov8n_seg/yolov8n_seg_256_config.yaml). To get this model, download it from the [ST Ultralytics fork](https://github.com/stm32-hotspot/ultralytics/blob/main/examples/YOLOv8-STEdgeAI/stedgeai_models/segmentation/yolov8n_256_quant_pc_ii_seg_coco-st.tflite) and put it in the corresponding ModelZoo folder (`instance_segmentation/yolov8n_seg/`).
 
-To configure the deployment, edit [`../src/config_file_examples/deployment_n6_yolov8n_seg_config.yaml`](../src/config_file_examples/deployment_n6_yolov8n_seg_config.yaml).
+To configure the deployment, edit [`../config_file_examples/deployment_n6_yolov8n_seg_config.yaml`](../config_file_examples/deployment_n6_yolov8n_seg_config.yaml).
 
 ### 2.1 Setting the model and the operation Mode
 
 ```yaml
-general:
-  model_type: yolo_v8_seg # yolo_v8_seg
+model:
+  model_type: yolov8n_seg # yolov8n_seg
   # path to a `.tflite` or `.onnx` file.
-  model_path: ../../../stm32ai-modelzoo/instance_segmentation/yolov8n_seg/yolov8n_256_quant_pc_ii_seg_coco-st.tflite
+  model_path: ../../stm32ai-modelzoo/instance_segmentation/yolov8n_seg/yolov8n_256_quant_pc_ii_seg_coco-st.tflite
 ```
 
 Configure the __operation_mode__ section as follow:
@@ -74,7 +74,7 @@ Configure the __dataset__ section in the YAML file as follows:
 
 ```yaml
 dataset:
-  name: COCO
+  dataset_name: coco_is
   classes_file_path : ./datasets/coco_classes.txt
 ```
 
@@ -126,7 +126,6 @@ These steps will be done automatically by configuring the __tools__ and __deploy
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -143,7 +142,6 @@ deployment:
 ```
 
 - `tools/stedgeai`
-  - `version` Specify the __STM32Cube.AI__ version used to benchmark the model, e.g. __10.0.0__.
   - `optimization` *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
   - `on_cloud` *Boolean*, True/False.
   - `path_to_stedgeai` *Path* to stedgeai executable file to use local download, else __False__.
@@ -198,10 +196,10 @@ __Warning__: using USB-A to USB-C cable may not work because of possible lack of
 
 __3.__ Set to [dev mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
 
-__4.__ Once [`deployment_n6_yolov8n_seg_config.yaml`](../src/config_file_examples/deployment_n6_yolov8n_seg_config.yaml) filled, launch:
+__4.__ Once [`deployment_n6_yolov8n_seg_config.yaml`](../config_file_examples/deployment_n6_yolov8n_seg_config.yaml) filled, launch:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_n6_yolov8n_seg_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_n6_yolov8n_seg_config.yaml
 ```
 
 __5.__ Once the application deployment complete, set to [boot from flash mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
@@ -226,10 +224,10 @@ __Warning__: using USB-A to USB-C cable may not work because of possible lack of
 
 __3.__ Set to [dev mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
 
-__4.__ Once [`deployment_n6_yolov8n_seg_config.yaml`](../src/config_file_examples/deployment_n6_yolov8n_seg_config.yaml) filled, launch:
+__4.__ Once [`deployment_n6_yolov8n_seg_config.yaml`](../config_file_examples/deployment_n6_yolov8n_seg_config.yaml) filled, launch:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_n6_yolov8n_seg_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_n6_yolov8n_seg_config.yaml
 ```
 
 __5.__ Once the application deployment complete, set to [boot from flash mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.

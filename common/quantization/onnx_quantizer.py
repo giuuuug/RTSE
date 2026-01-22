@@ -8,26 +8,39 @@
 from datetime import datetime
 import glob
 from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
+import logging
 import numpy as np
 import onnx
 import onnxruntime
-from onnx import version_converter
+from onnx import version_converter, checker
 from onnxruntime import quantization
 from onnxruntime.quantization import (CalibrationDataReader, CalibrationMethod,
                                       QuantFormat, QuantType, quantize_static)
 import os
 from typing import List
 
+from .quant_utils import get_weights_activations_quant_type, get_calibration_method
+
 
 def _update_opset(input_model, target_opset, export_dir):
-    '''
+    """
     updates the opset of an onnx model
     inputs:
         input_model: path of the input model.
         target_opset: the target opset model is to be updated to.
-    '''
+    """
+    # ir_version in function of opset
+    ir_version_dict = {21: 10,
+                       20: 9,
+                       19: 9,
+                       18: 8,
+                       17: 8,
+                       16: 8,
+                       15: 8
+                       }
 
-    if not input_model.endswith('.onnx'):
+    if not str(input_model).endswith('.onnx'):
         raise TypeError("Error! The model file must be of onnx format!")
     model = onnx.load(input_model)
     # Check the current opset version
@@ -38,6 +51,20 @@ def _update_opset(input_model, target_opset, export_dir):
 
     # Modify the opset version in the model
     converted_model = version_converter.convert_version(model, target_opset)
+
+    # Potentially change ir_version
+    print(f"[INFO] : Model current IR version: {converted_model.ir_version}")
+    if target_opset >= 15 and converted_model.ir_version != ir_version_dict[target_opset]:
+        converted_model.ir_version = ir_version_dict[target_opset]
+        print(f"[INFO] : Update model IR version to {converted_model.ir_version} for compatibility with target opset "
+              f"{target_opset}")
+
+    # check if the obtained model is valid
+    try:
+        checker.check_model(converted_model)
+    except checker.ValidationError as e:
+        print(f"[ERROR] : The model is invalid. {e}")
+
     opset_model = f'{export_dir}/{os.path.basename(input_model)}'[:-5] + f'_opset{target_opset}.onnx'
     onnx.save(converted_model, opset_model)
 
@@ -50,7 +77,8 @@ def _update_opset(input_model, target_opset, export_dir):
         return
 
     # Replace the original model file with the modified model
-    print(f"[INFO] : The model has been converted to opset {target_opset} and saved at the same location.")
+    print(f"[INFO] : The model has been converted to opset {target_opset}, IR {converted_model.ir_version} and saved "
+          f"at the same location.")
     return opset_model
 
 def _preprocess_random_images(height: int, width: int, channel: int, size_limit=10):
@@ -72,9 +100,9 @@ def _preprocess_random_images(height: int, width: int, channel: int, size_limit=
 
 class ImageDataReader(CalibrationDataReader):
     '''
-    ImageDataReader for the caliberation during onnx quantization.
+    ImageDataReader for the calibration during onnx quantization.
     The initiation takes as input:
-        quantization_samples: an np array containing the caliberation samples dataset
+        quantization_samples: an np array containing the calibration samples dataset
         model_path: path of the model to be quantized
     '''
     def __init__(self,
@@ -110,29 +138,28 @@ class ImageDataReader(CalibrationDataReader):
     def rewind(self):
         self.enum_data = None  # Reset the enumeration of calibration dataclass ImageDataReader
 
-def quantize_onnx(quantization_samples, configs) -> None:
-    '''
-        This function takes an onnx model as input and perform quantization of it using onnxruntime.
-        inputs:
-            quantization_samples: quantization ds
-            configs: configuration dictionary
-        returns:
-            None
-    '''
-    model_path = configs.general.model_path
+
+def quantize_onnx(configs: DictConfig, model_path=None, quantization_samples=None, model: object = None, extra_options: dict = None):
+    """
+    Quantizes an ONNX model using onnx-runtime.
+
+    Args:
+        configs (DictConfig): Configuration dictionary containing quantization and model settings.
+        quantization_samples: Calibration/representative dataset as a numpy array (optional).
+        model (object, optional): Model object with a model_path attribute, or None to use configs.model.model_path.
+        extra_options (dict, optional): Extra options for ONNX quantizer.
+
+    Returns:
+        onnxruntime.InferenceSession: Quantized model session with model_path attribute.
+    """
+#    model_path = configs.model.model_path
+#    model_path = model.model_path
     granularity = configs.quantization.granularity.lower()
     target_opset = configs.quantization.target_opset
     output_dir = HydraConfig.get().runtime.output_dir
     export_dir = configs.quantization.export_dir
 
-    # Should default to None when op_types_to_quantize is not set in config
-    # (which is also the quantize_static default), but just in case.
-    try:
-        op_types_to_quantize = configs.quantization.op_types_to_quantize
-    except:
-        op_types_to_quantize = None
-
-    export_dir = output_dir + (f'/{export_dir}' if  export_dir else '')
+    export_dir = output_dir + (f'/{export_dir}' if export_dir else '')
     if not os.path.isdir(export_dir):
         os.makedirs(export_dir)
     if granularity == 'per_tensor':
@@ -145,31 +172,33 @@ def quantize_onnx(quantization_samples, configs) -> None:
 
     print(f'[INFO] : Quantizing model : {model_path}')
 
-    opset_model = _update_opset(input_model=model_path,
-                 target_opset=target_opset,
-                 export_dir=output_dir)
+    opset_model = _update_opset(input_model=model_path, target_opset=target_opset, export_dir=output_dir)
 
     # set the data reader pointing to the representative dataset
     print('[INFO] : Prepare the data reader for the representative dataset...')
-    dr = ImageDataReader(quantization_samples = quantization_samples,
-                         model_path = opset_model)
+    dr = ImageDataReader(quantization_samples=quantization_samples, model_path=opset_model)
     print('[INFO] : the data reader is ready')
 
     # preprocess the model to infer shapes of each tensor
-    
-    infer_model = os.path.join(export_dir,f'{os.path.basename(opset_model)[:-5]}_infer.onnx')
+    infer_model = os.path.join(export_dir, f'{os.path.basename(opset_model)[:-5]}_infer.onnx')
     quantization.quant_pre_process(input_model_path=opset_model,
                                    output_model_path=infer_model,
                                    skip_optimization=False,
-                                   skip_symbolic_shape=True) #a voir)
+                                   skip_symbolic_shape=True)
 
+    # settings for quantization
+    weight_type, activ_type = get_weights_activations_quant_type(cfg=configs)
+    calibration_method = get_calibration_method(cfg=configs)
+    if configs.quantization.onnx_quant_parameters:
+        op_types_to_quantize = configs.quantization.onnx_quant_parameters.op_types_to_quantize
+        nodes_to_quantize = configs.quantization.onnx_quant_parameters.nodes_to_quantize
+        nodes_to_exclude = configs.quantization.onnx_quant_parameters.nodes_to_exclude
+    else:
+        op_types_to_quantize = None
+        nodes_to_quantize = None
+        nodes_to_exclude = None
 
-    extra_options = {'WeightSymmetric': True, 'ActivationSymmetric': False} 
-    if configs.quantization.extra_options == 'calib_moving_average':
-        extra_options["CalibMovingAverage"] = True
-    else: 
-        extra_options["CalibMovingAverage"] = False
-    # prepare quantized onnx model filename 
+    # prepare quantized onnx model filename
     quant_model = os.path.join(export_dir,f'{os.path.basename(opset_model)[:-5]}_{quant_tag}.onnx')
     print(f'[INFO] : Quantizing the model {os.path.basename(model_path)}, please wait...')
 
@@ -178,20 +207,23 @@ def quantize_onnx(quantization_samples, configs) -> None:
         quant_model,
         dr,
         op_types_to_quantize=op_types_to_quantize,
-        calibrate_method=CalibrationMethod.MinMax, 
+        calibrate_method=calibration_method,
         quant_format=QuantFormat.QDQ,
         per_channel= granularity == 'per_channel',
-        weight_type=QuantType.QInt8,
-        activation_type=QuantType.QInt8,
+        weight_type=weight_type,
+        activation_type=activ_type,
+        nodes_to_quantize=nodes_to_quantize,
+        nodes_to_exclude=nodes_to_exclude,
         #optimize_model=False,
         extra_options=extra_options)
 
     # Load the modified model using ONNX Runtime Check if the model is valid
-    session = onnxruntime.InferenceSession(quant_model)
+    model = onnxruntime.InferenceSession(quant_model)
     try:
-        session.get_inputs()
+        model.get_inputs()
     except Exception as e:
         print(f"[ERROR] : An error occurred while quantizing the model: {e}")
         return
-    print(f'[INFO] : Model {os.path.basename(quant_model)} has been created')
-    return quant_model
+    print("Quantized model path:", quant_model)
+    setattr(model, 'model_path', quant_model)
+    return model

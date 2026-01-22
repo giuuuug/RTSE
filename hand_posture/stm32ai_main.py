@@ -13,6 +13,7 @@ import hydra
 import warnings
 warnings.filterwarnings("ignore")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import tensorflow as tf
 from omegaconf import DictConfig
@@ -23,84 +24,82 @@ from clearml.backend_config.defs import get_active_config_file
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
+from api.api import get_model, get_dataloaders, get_trainer, get_evaluator
 from common.utils import mlflow_ini, set_gpu_memory_limit, get_random_seed, display_figures, log_to_file
 from common.benchmarking import benchmark
-from src.preprocessing import preprocess
-from src.utils import get_config
-from src.training import train
-from src.evaluation import evaluate
-from src.deployment import deploy
+from hand_posture.tf.src.utils import get_config
+from hand_posture.tf.src.deployment import deploy
+
 from typing import Optional
 
 
-def process_mode(mode: str = None, 
-                 configs: DictConfig = None, 
-                 train_ds: tf.data.Dataset = None,
-                 valid_ds: tf.data.Dataset = None,
-                 test_ds: tf.data.Dataset = None, 
-                 float_model_path: Optional[str] = None,
-                 fake: Optional[bool] = False) -> None:
+def process_mode(cfg: DictConfig = None) -> None:
     """
-    Process the selected mode of operation.
+    Process the selected mode of operation using model objects.
 
     Args:
-        mode (str): The selected mode of operation. Must be one of 'train', 'evaluate', or 'predict'.
-        configs (DictConfig): The configuration object.
-        train_ds (tf.data.Dataset): The training dataset. Required if mode is 'train'.
-        valid_ds (tf.data.Dataset): The validation dataset. Required if mode is 'train' or 'evaluate'.
-        test_ds (tf.data.Dataset): The test dataset. Required if mode is 'evaluate' or 'predict'.
-        float_model_path(str, optional): Model path . Defaults to None
-        fake (bool, optional): Whether to use fake data for representative dataset generation. Defaults to False.
+        mode (str): The selected mode of operation. Must be one of 'training', 'evaluation', 'deployment', 'benchmarking'.
+        cfg (DictConfig): The configuration object.
+        train_ds (tf.data.Dataset): The training dataset. Required if mode is 'training'.
+        valid_ds (tf.data.Dataset): The validation dataset. Required if mode is 'training' or 'evaluation'.
+        test_ds (tf.data.Dataset): The test dataset. Required if mode is 'evaluation'.
     Returns:
         None
     Raises:
         ValueError: If an invalid operation_mode is selected or if required datasets are missing.
     """
+    mode = cfg.operation_mode
+    
+    log_to_file(cfg.output_dir, f'operation_mode: {mode}')
+    mlflow.log_param("model_path", cfg.model.model_path)
+    # Always get the model object using get_model
+    saved_model_dir = os.path.join(cfg.output_dir, cfg.general.saved_models_dir)
+    os.makedirs(saved_model_dir, exist_ok=True)
+    model = get_model(cfg=cfg)
 
-    # Check the selected mode and perform the corresponding operation
-    # logging the operation_mode in the output_dir/stm32ai_main.log file
-    log_to_file(configs.output_dir, f'operation_mode: {mode}')
+    # get the dataloaders
+    if mode in ['training', 'evaluation']:
+        dataloaders = get_dataloaders(cfg=cfg)
+
+
     if mode == 'training':
-        if test_ds:
-            train(cfg=configs, train_ds=train_ds, valid_ds=valid_ds, test_ds=test_ds)
-        else:
-            train(cfg=configs, train_ds=train_ds, valid_ds=valid_ds)
-        display_figures(configs)
+        trainer = get_trainer(cfg=cfg,
+                              model=model,
+                              dataloaders=dataloaders)
+        trained_model = trainer.train()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        evaluator.evaluate()
+        display_figures(cfg)
         print('[INFO] : Training complete.')
     elif mode == 'evaluation':
-        if test_ds:
-            evaluate(cfg=configs, eval_ds=test_ds, name_ds="test_set")
-        else:
-            evaluate(cfg=configs, eval_ds=valid_ds, name_ds="validation_set")
-        display_figures(configs)
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        evaluator.evaluate()
+        display_figures(cfg)
         print('[INFO] : Evaluation complete.')
     elif mode == 'deployment':
-        deploy(cfg=configs)
+        deploy(cfg=cfg, model_path_to_deploy=model.model_path )
         print('[INFO] : Deployment complete.')
     elif mode == 'benchmarking':
-        benchmark(cfg=configs)
+        benchmark(cfg=cfg, model_path_to_benchmark=model.model_path)
         print('[INFO] : Benchmark complete.')
 
     # Raise an error if an invalid mode is selected
     else:
         raise ValueError(f"Invalid mode: {mode}")
-
-    # Record the whole hydra working directory to get all info
-    mlflow.log_artifact(configs.output_dir)   
-    if mode in ['benchmarking']: #'chain_qb', 'chain_eqeb', 'chain_tbqeb'
-        mlflow.log_param("model_path", configs.general.model_path)
-        mlflow.log_param("stm32ai_version", configs.tools.stm32ai.version)
-        mlflow.log_param("target", configs.benchmarking.board)
-    # logging the completion of the chain
-    log_to_file(configs.output_dir, f'operation finished: {mode}')
-
-    # ClearML - Example how to get task's context anywhere in the file.
-    # Checks if there's a valid ClearML configuration file
+    mlflow.log_artifact(cfg.output_dir)
+    if mode in ['benchmarking']:
+        mlflow.log_param("model_path", cfg.model.model_path)
+        mlflow.log_param("stedgeai_core_version", cfg.tools.stedgeai.version)
+        mlflow.log_param("target", cfg.benchmarking.board)
+    log_to_file(cfg.output_dir, f'operation finished: {mode}')
     if get_active_config_file() is not None: 
         print(f"[INFO] : ClearML task connection")
         task = Task.current_task()
-        task.connect(configs)
+        task.connect(cfg)
 
 
 @hydra.main(version_base=None, config_path="", config_name="user_config")
@@ -148,23 +147,8 @@ def main(cfg: DictConfig) -> None:
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
 
-    # Extract the mode from the command-line arguments
-    mode = cfg.operation_mode
-    valid_modes = ['training', 'evaluation']
-    if mode in valid_modes:
-        # Perform further processing based on the selected mode
-        preprocess_output = preprocess(cfg=cfg)
-        train_ds, valid_ds, test_ds = preprocess_output
-        # Process the selected mode
-        process_mode(mode=mode, 
-                     configs=cfg, 
-                     train_ds=train_ds, 
-                     valid_ds=valid_ds,
-                     test_ds=test_ds)
-    else:
-        # Process the selected mode
-        process_mode(mode=mode, 
-                     configs=cfg)
+    # Process the selected mode of operation
+    process_mode(cfg=cfg)
 
 
 if __name__ == "__main__":

@@ -6,13 +6,8 @@ For this tutorial, we will use the CSTR VCTK + DEMAND, colloquially and hencefor
 
 The model zoo allows you to evaluate Torch models, ONNX models, and quantized ONNX models. We'll be walking you through all three cases.
 
-Note that contrary to the rest of the model zoo, the speech enhancement use case uses Pytorch, so you'll need to install other Python requirements. 
-Simply run `pip install torch_requirements.txt` in the `speech_enhancement/` directory.
 
-**We recommend you install these to a separate environment !**
-
-
-**IMPORTANT NOTE :** For this use case, we have chosen to support and provide models that work in the frequency domain, as time-domain models do not perform well when quantized to 8-bit integer precision.
+**IMPORTANT NOTE :** For this use case, we have chosen to support and provide models that operate in the frequency domain, as time-domain models do not perform well when quantized to 8-bit integer precision.
 
 The general flow of inference is the following : A complex spectrogram of the noisy audio is computed and the corresponding magnitude spectrogram is given as input to the model. 
 
@@ -38,19 +33,19 @@ For this tutorial, we will only need a test set.
 
 This means that your dataset must be comprised of :
 - A folder containing the clean test audio files. All audio files must share the same format. No mixing .wav and .flac in the same folder, for example.
-- A folder containing the noisy test audio files. All audio files must share the same format. This folder must have the same number of files as the above folder
+- A folder containing the noisy test audio files. All audio files must share the same format. This folder must have the same number of files as the above folder.
 
 You can optionally provide training audio files, but they will be ignored for evaluation.
 
 If you're using the Valentini dataset, then all these conditions are already satisfied, and you don't need to worry about anything.
 
-**NOTE :** If using the Valentini dataset, the noisy audio clips in the test set have slightly higher SNR than in the training set. Therefore, you will see better test metrics than validation metrics. This is normal.
+**NOTE :** If using the Valentini dataset, the noisy audio clips in the test set have slightly higher SNR than in the training set. Therefore, you will see better test metrics than validation metrics. This is expected.
 
 </details>
 <details open><summary><a href="#2"><b>2. Create your configuration file</b></a></summary><a id="2"></a>
 <ul><details open><summary><a href="#2-1">2.1 Overview</a></summary><a id="2-1"></a>
 
-The training, evaluation, quantization and benchmarking of the model are driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [UC](../) directory.
+The training, evaluation, quantization and benchmarking of the model are driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [the root folder of this UC](../) directory.
 
 A configuration file includes the following sections:
 
@@ -63,13 +58,12 @@ A configuration file includes the following sections:
 - `training`, specifies your training setup, including batch size, number of epochs, optimizer, etc.
 - `quantization`, contains parameters related to quantization, such as number of quantization samples, quantizer options, etc.
 - `evaluation` contains parameters related to model evaluation
-- `stedgeai`, specifies the STM32Cube.AI configuration to benchmark your model on a board, including memory footprints, inference time, etc.
 - `tools`, specifies paths and options to the ST tools used for benchmarking and deployment
 - `deployment`, contains parameters used for deployment on STM32N6 target.
 - `mlflow`, specifies the folder to save MLFlow logs.
 - `hydra`, specifies the folder to save Hydra logs.
 
-This tutorial only describes enough settings for you to be able to run an example. Please refer to the [main README](./README_OVERVIEW.md) for more information. The model zoo offers many more features than those described in this short tutorial.
+This tutorial only describes enough settings for you to be able to run the evaluation service. Please refer to the [main README](./README_OVERVIEW.md) for more information. The model zoo offers many more features than those described in this short tutorial.
 </details></ul>
 
 <ul><details open><summary><a href="#2-2">2.2 Operation mode</a></summary><a id="2-2"></a>
@@ -88,7 +82,7 @@ operation_mode: evaluation
 The first section of the configuration file is the `general` section that provides information about your project.
 
 ```yaml
-general:general:
+general:
   project_name: speech_enhancement_project
   logs_dir: logs # Name of the directory where logs are saved
   saved_models_dir: saved_models # Name of the directory where models are saved
@@ -100,19 +94,19 @@ These `logs_dir` and `saved_models_dir` directories are located under the top le
 
 For more details on the structure of the output directory, please consult section 1.2 of the [main README](./README_OVERVIEW.md)
 
-Since we are running an evaluation, no model is saved, and the GPU is only used if evaluating a torch model. ONNX model evaluation only runs on CPU.
+Since we are running an evaluation, no model is saved, and the GPU is only used if evaluating a Torch model. ONNX model evaluation only runs on CPU.
 
 </details></ul>
 
 <ul><details open><summary><a href="#2-4">2.4 Model settings</a></summary><a id="2-4"></a>
 
-Information about the model you wish to evaluate is provided in the `model` and `model_specific` sections of the configuration file, as show in the YAML code below : 
+Information about the model you wish to evaluate is provided in the `model` and `model_specific` sections of the configuration file, as shown in the YAML code below : 
 
 ```yaml
 model:
-  model_type: STFTTCNN # For training
+  model_name: STFTTCNN # For training
   state_dict_path: path/to/your/state_dict.pt # For training and evaluating torch models
-  onnx_path: path/to/your/model.onnx # For quantization, evaluation, benchmarking and deployment only
+  model_path: path/to/your/model.onnx # For quantization, evaluation, benchmarking and deployment only
 
 model_specific:
   # Parameters specific to your model type, e.g. n_blocks, tcn_latent_dim for STFT-TCNN
@@ -124,19 +118,19 @@ model_specific:
   mask_activation: "tanh"
 ```
 
-You can evaluate both Torch models and ONNX models (both float and quantized) using the model zoo.
+You can evaluate both Torch and ONNX models (both float and quantized) using the model zoo.
 
-If you wish to evaluate an ONNX model, provide the path to the model using the `onnx_path` attribute. This works for both quantized and float models. When evaluating an ONNX model, the other attributes in this section (`model_type` and `state_dict_path`) are ignored.
+If you wish to evaluate an ONNX model, provide the path to the model using the `model_path` attribute. This works for both quantized and float models. When evaluating an ONNX model, the other attributes in this section (`model_name` and `state_dict_path`) are ignored.
 
-If you instead wish to evaluate a Torch model, leave the `onnx_path` attribute empty, and use the `model_type` and `state_dict_path` attributes. 
+If you instead wish to evaluate a Torch model, leave the `model_path` attribute empty, and use the `model_name` and `state_dict_path` attributes. 
 
-A model of the class `model_type` will be initialized, and the weights in the state dict given in `state_dict_path` will be loaded into the model before evaluation.
+A model of the class `model_name` will be initialized, and the weights in the state dict given in `state_dict_path` will be loaded into the model before evaluation.
 
-If both `onnx_path` and `state_dict_path` are provided, the ONNX model is evaluated, and `state_dict_path` and `model_type` are ignored.
+If both `model_path` and `state_dict_path` are provided, the ONNX model is evaluated, and `state_dict_path` and `model_name` are ignored.
 
-The `model_type` attribute designates the architecture of the model you want to evaluate. For now, only the STFTCNN architecture is available. The STFTTCNN is an adaptation of the TCNN model in the frequency domain. See the original paper [here](https://ieeexplore.ieee.org/document/8683634).
+The `model_name` attribute designates the architecture of the model you want to evaluate. For now, only the STFTCNN architecture is available. The STFTTCNN is an adaptation of the TCNN model in the frequency domain. See the original paper [here](https://ieeexplore.ieee.org/document/8683634).
 
-The `model_specific` block lets you modify parameters of the specific model_type you chose. It will contain different attributes for different models. For details on what each attribute does, refer to the [main README](./README_OVERVIEW.md), or to the docstring of the appropriate model class found in [models/](../src/models/) folder
+The `model_specific` block lets you modify parameters of the specific model_name you chose. It will contain different attributes for different models. For details on what each attribute does, refer to the [main README](./README_OVERVIEW.md), or to the docstring of the appropriate model class found in [pt/src/models/](../pt/src/models/) folder
 
 **NOTE WHEN USING CUSTOM MODELS : Currently, the model zoo expects models to accept tensors of shape (batch, n_fft // 2  + 1, sequence_length) as input, corresponding to magnitude spectrograms. Make sure this is the case for your custom model.** 
 
@@ -154,7 +148,7 @@ Information about the dataset you want to use is provided in the `dataset` secti
 
 ```yaml
 dataset:
-  name: valentini # Or "custom"
+  dataset_name: valentini # Or "custom"
   root_folder: /local/datasets/Valentini # Root folder of dataset
   n_speakers: 56 # For Valentini, 28 or 56 speaker dataset. Does nothing if name is "custom"
   file_extension: '.wav' # Extension of audio files. Valentini dataset uses .wav
@@ -181,7 +175,7 @@ For more details on this section, please consult section 3.5 of the [main README
 </details></ul>
 <ul><details open><summary><a href="#2-6">2.6 Audio preprocessing</a></summary><a id="2-6"></a>
 
-The general flow of inference is the following : A complex spectrogram of the noisy audio is computed by peforming a Short-Term Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
+The general flow of inference is the following : A complex spectrogram of the noisy audio is computed by peforming a Short-Time Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
 
 The model outputs a mask of the same shape as its input, and this mask is applied to the complex spectrogram. The masked complex spectrogram is then transformed back to the time domain by inverse STFT. This gives us the denoised time-domain signal.
 
@@ -202,7 +196,7 @@ preprocessing:
   power: 1
 ```
 
-**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported. Other pipelines are present in [preprocessing/freq_pipeline.py](../src/preprocessing/freq_pipeline.py) but in an experimental stage.
+**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported. Other pipelines are present in [pt/src/preprocessing/freq_pipeline.py](../pt/src/preprocessing/freq_pipeline.py) but are not supported by the rest of the code in the zoo.
 
 
 For more details on what each parameter does, please refer to section 3.6 of the [main README](./README_OVERVIEW.md)
@@ -217,7 +211,7 @@ The evaluation setup is described in the `evaluation` section of the configurati
 ```yaml
 evaluation:
   logs_path: eval_logs/ # Path to evaluation logs, appended to general.logs_dir
-  device: "cuda:0" # Only used when evaluating torch models.
+  device: "cuda:0" # Only used when evaluating Torch models.
   # If evaluating models with a fixed sequence length axis length, set the following parameter
   # to the length of the axis. E.g. if input shape is [1, 257, 20], set fixed_sequence_length to 20.
   # If evaluating models with a dynamic sequence length axis, leave empty.
@@ -232,18 +226,18 @@ Some comments :
 
 When quantizing a model using the model zoo, you will receive both a quantized model with DYNAMIC sequence length axis, and one with STATIC sequence length axis as output.
 
-**We recommend you evaluate the model with a DYNAMIC sequence length axis, and use only the model with a STATIC sequence length axis for deployment**
+**We recommend you evaluate the model with a DYNAMIC sequence length axis, and use only the model with a STATIC sequence length axis for deployment.**
 
 To evaluate a model with a dynamic sequence length axis, simply leave `static_sequence_length` empty.
 
-**IMPORTANT NOTE : If you evaluate a model with a STATIC sequence length axis, clips will be trimmed or padded to that sequence length. This can heavily skew evaluation results, meaning the results may not be representative**
+**IMPORTANT NOTE : If you evaluate a model with a STATIC sequence length axis, clips will be trimmed or padded to that sequence length. This can heavily skew evaluation results, meaning the results may not be representative.**
 
 
 </details></ul>
 </details>
 <details open><summary><a href="#3"><b>3. Evaluate your model</b></a></summary><a id="3"></a>
 
-Run the following command, from the [UC](../) directory:
+Run the following command, from the [the root folder of this UC](../) directory:
 
 ```bash
 python stm32ai_main.py
@@ -269,7 +263,7 @@ hydra:
   run:
     dir: ./experiment_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
-By default, the output directory is `src/experiment_outputs/<date_time_of_your_run>/` folder. Note that this directory will NOT exist before you run the model zoo at least once.
+By default, the output directory is `./pt/src/experiment_outputs/<date_time_of_your_run>/` folder. Note that this directory will NOT exist before you run the model zoo at least once.
 
 This directory contains the following files : 
 - The .hydra folder contains Hydra logs
@@ -284,7 +278,7 @@ For more details on the list of outputs, and the structure of the output directo
 <details open><summary><a href="#6"><b>6. Run MLFlow</b></a></summary><a id="6"></a>
 
 MLflow is an API for logging parameters, code versions, metrics, and artifacts while running machine learning code and for visualizing results.
-To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command:
+To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command in the `./pt/src/experiments_outputs/` directory :
 ```bash
 mlflow ui
 ```

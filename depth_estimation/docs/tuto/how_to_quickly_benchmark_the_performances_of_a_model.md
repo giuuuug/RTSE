@@ -21,8 +21,8 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml 
 
-general:
-   model_path: ../../stm32ai-modelzoo/depth_estimation/fast_depth/Public_pretrainedmodel_public_dataset/nyu_depth_v2/fast_depth_320/fast_depth_320_int8_pc.tflite
+model:
+   model_path: ../../stm32ai-modelzoo/depth_estimation/fastdepth/Public_pretrainedmodel_public_dataset/nyu_depthv2/fastdepth_320/fastdepth_320_int8.tflite
 
 operation_mode: benchmarking
 
@@ -37,7 +37,6 @@ preprocessing:
 
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/Users/<XXXXX>/STM32Cube/Repository/Packs/STMicroelectronics/X-CUBE-AI/<*.*.*>/Utilities/windows/stedgeai.exe
@@ -46,12 +45,14 @@ tools:
 benchmarking:
    board: STM32N6570-DK
 
+
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
+
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
@@ -70,11 +71,11 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Local benchmarking:
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then extract the files.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 

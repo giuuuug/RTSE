@@ -13,7 +13,7 @@ You can refer to readme links below that provide typical examples of operation m
    - [benchmarking](./docs/README_BENCHMARKING.md)
    - [prediction](./docs/README_PREDICTION.md)
 
-All .yaml configuration examples are located in [config_file_examples](./src/config_file_examples/) folder.
+All .yaml configuration examples are located in [config_file_examples](./config_file_examples/) folder.
 
 The different values of the `operation_mode` attribute and the corresponding operations are described in the table below. In the names of the chain modes, 't' stands for training, 'e' for evaluation, 'q' for quantization, 'b' for benchmark and 'd' for deployment on an STM32 board.
 
@@ -30,5 +30,5 @@ Don't forget to follow our tuto below for a quick ramp up :
 * [How can I quickly check the performance of my model using the dev cloud?](./docs/tuto/how_to_quickly_benchmark_the_performances_of_a_model.md)
 
 
-Remember that minimalistic yaml files are available [here](./src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that minimalistic yaml files are available [here](./config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
 

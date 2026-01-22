@@ -40,28 +40,28 @@ def benchmark(cfg: DictConfig = None, model_path_to_benchmark: Optional[str] = N
     Returns:
         None
     """
-
-    model_path = model_path_to_benchmark if model_path_to_benchmark else cfg.general.model_path
+    model_path = model_path_to_benchmark if model_path_to_benchmark else cfg.model.model_path
     model_name, input_shape = get_model_name_and_its_input_shape(model_path=model_path,
                                                                  custom_objects=custom_objects)
     output_dir = HydraConfig.get().runtime.output_dir
     stm32ai_output = output_dir + "/stm32ai_files"
-    stm32ai_version = cfg.tools.stm32ai.version
-    optimization = cfg.tools.stm32ai.optimization
+    stedgeai_core_version = cfg.tools.stedgeai.version
+    optimization = cfg.tools.stedgeai.optimization
     board = cfg.benchmarking.board
-    path_to_stm32ai = cfg.tools.stm32ai.path_to_stm32ai
+    path_to_stm32ai = cfg.tools.stedgeai.path_to_stm32ai
     #log the parameters in stm32ai_main.log
-    log_to_file(cfg.output_dir, f'Stm32ai version : {stm32ai_version}')
+    log_to_file(cfg.output_dir, f'stedgeai core version : {stedgeai_core_version}')
     log_to_file(cfg.output_dir, f'Benchmarking board : {board}')
     get_model_name_output = get_model_name(model_type=str(model_name),
                                            input_shape=str(input_shape[0]),
                                            project_name=cfg.general.project_name)
     _stm32ai_benchmark(footprints_on_target=board,
                       optimization=optimization,
-                      stm32ai_version=stm32ai_version, model_path=model_path,
+                      stedgeai_core_version=stedgeai_core_version, model_path=model_path,
                       stm32ai_output=stm32ai_output, path_to_stm32ai=path_to_stm32ai,
-                      get_model_name_output=get_model_name_output,on_cloud =cfg.tools.stm32ai.on_cloud,
+                      get_model_name_output=get_model_name_output,on_cloud =cfg.tools.stedgeai.on_cloud,
                       credentials=credentials)
+    print('[INFO] : Benchmark complete.')
 
 
 def _analyze_footprints(offline: bool = True, results: dict = None, stm32ai_output: str = None,
@@ -223,7 +223,7 @@ def _analyze_footprints(offline: bool = True, results: dict = None, stm32ai_outp
 
 
 def benchmark_model(optimization: str = None, model_path: str = None, path_to_stm32ai: str = None,
-                    stm32ai_output: str = None, stm32ai_version: str = None, get_model_name_output: str = None) -> \
+                    stm32ai_output: str = None, stedgeai_core_version: str = None, get_model_name_output: str = None) -> \
         Optional[Exception]:
     """
     Benchmark model using STM32Cube.AI locally.
@@ -233,7 +233,7 @@ def benchmark_model(optimization: str = None, model_path: str = None, path_to_st
         model_path (str): Path to the model file.
         path_to_stm32ai (str): Path to STM32Cube.AI.
         stm32ai_output (str): Path to output directory.
-        stm32ai_version (str): STM32Cube.AI version.
+        stedgeai_core_version (str): STEdgeAI Core version.
         get_model_name_output (str): Model name output.
 
     Returns:
@@ -255,10 +255,10 @@ def benchmark_model(optimization: str = None, model_path: str = None, path_to_st
         args = shlex.split(command, posix="win" not in sys.platform)
         line = Popen(args, env=new_env, stdout=subprocess.PIPE).communicate()[0].decode("utf-8")
         version_line = line.split('v')[-1].split('-')[0].replace('\r\n', '')
-        if not version_line.endswith(stm32ai_version):
+        if not version_line.endswith(stedgeai_core_version):
             print(
-                f"[WARN] : STM32Cube.AI installed version {version_line} does not match the version specified in user_config.yaml file {stm32ai_version} !")
-        print(f"[INFO] : STM32Cube.AI version {version_line} used.")
+                f"[WARN] : STEdgeAI Core installed version {version_line} does not match the version specified in .yaml file through the installation path {stedgeai_core_version} !")
+        print(f"[INFO] : STEdgeAI Core version {version_line} used.")
 
         # Run generate command locally
         command = f"{path_to_stm32ai} generate --target stm32 -m {model_path} -v 0 --output {stm32ai_output} --workspace {stm32ai_output} --optimization {optimization}"
@@ -268,7 +268,7 @@ def benchmark_model(optimization: str = None, model_path: str = None, path_to_st
 
     except subprocess.CalledProcessError as e:
         raise TypeError(
-            f"Received: stm32ai.path_to_stm32ai={path_to_stm32ai}. Please specify a correct path to STM32Cube.AI!") from e
+            f"Received: stedgeai.path_to_stm32ai={path_to_stm32ai}. Please specify a correct path to STM32Cube.AI!") from e
 
     return stm32ai_output
 
@@ -298,12 +298,12 @@ def _get_credentials() -> tuple:
     return username, password
 
 
-def cloud_connect(stm32ai_version: str = None, credentials: list[str] = None) -> Union[bool, Stm32Ai, list[str]]:
+def cloud_connect(stedgeai_core_version: str = None, credentials: list[str] = None) -> Union[bool, Stm32Ai, list[str]]:
     """
     Connect to your STM32Cube.AI Developer Cloud account.
 
     Args:
-        stm32ai_version (str): Version of the STM32Cube.AI backend to use.
+        stedgeai_core_version (str): Version of the STEdgeAI Core version to use.
         credentials list[str]: User credentials used before to connect.
     Returns:
         ai (class): Stm32Ai Class to establish connection with STM32Cube.AI Developer Cloud Services.
@@ -325,7 +325,7 @@ def cloud_connect(stm32ai_version: str = None, credentials: list[str] = None) ->
     # Try to create the STM32Cube.AI instance up to 3 times
     for attempt in range(3):
         try:
-            backend = CloudBackend(username, password, version=stm32ai_version)
+            backend = CloudBackend(username, password, version=stedgeai_core_version)
             ai = Stm32Ai(backend)
             login_success = True
             break
@@ -456,7 +456,7 @@ def _cloud_benchmark(ai: Stm32Ai = None, model_path: str = None, board_name: str
 
 
 def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = None,
-                      stm32ai_version: str = None, model_path: str = None,
+                      stedgeai_core_version: str = None, model_path: str = None,
                       stm32ai_output: str = None, path_to_stm32ai: str = None,
                       get_model_name_output: str = None, on_cloud: bool = False,
                       credentials: list[str] = None) -> None:
@@ -466,7 +466,7 @@ def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = No
     Args:
     - footprints_on_target (str): Flag indicating the name of the board.
     - optimization (str): Optimization level to use.
-    - stm32ai_version (str): Version of STM32Cube.AI to use.
+    - stedgeai_core_version (str): Version of STEdgeAI Core to use.
     - model_path (str): Path to the model file.
     - stm32ai_output (str): Path to the output directory for the generated C code.
     - get_model_name_output (str): Path to the output directory for the generated model name.
@@ -492,7 +492,7 @@ def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = No
     if on_cloud:
 
         # Connect to STM32Cube.AI Developer Cloud
-        login_success, ai, _ = cloud_connect(stm32ai_version=stm32ai_version, credentials=credentials)
+        login_success, ai, _ = cloud_connect(stedgeai_core_version=stedgeai_core_version, credentials=credentials)
 
         if login_success:
 
@@ -543,7 +543,7 @@ def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = No
                             "[INFO] : Using the local download of STM32Cube.AI. Link to download https://www.st.com/en/embedded-software/x-cube-ai.html")
                         benchmark_model(
                             optimization=optimization, model_path=model_path, path_to_stm32ai=path_to_stm32ai,
-                            stm32ai_output=stm32ai_output, stm32ai_version=stm32ai_version,
+                            stm32ai_output=stm32ai_output, stedgeai_core_version=stedgeai_core_version,
                             get_model_name_output=get_model_name_output)
                     else :
                         print("[FAIL] : Cloud Analyze failed :", e)
@@ -554,7 +554,7 @@ def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = No
                     "[INFO] : Using the local download of STM32Cube.AI. Link to download https://www.st.com/en/embedded-software/x-cube-ai.html")
                 benchmark_model(
                     optimization=optimization, model_path=model_path, path_to_stm32ai=path_to_stm32ai,
-                    stm32ai_output=stm32ai_output, stm32ai_version=stm32ai_version,
+                    stm32ai_output=stm32ai_output, stedgeai_core_version=stedgeai_core_version,
                     get_model_name_output=get_model_name_output)
             else :
                 print("[FAIL] : Login to Developer cloud failed")
@@ -564,7 +564,7 @@ def _stm32ai_benchmark(footprints_on_target: str = False, optimization: str = No
             "[INFO] : Using the local download of STM32Cube.AI. Link to download https://www.st.com/en/embedded-software/x-cube-ai.html")
         benchmark_model(
             optimization=optimization, model_path=model_path, path_to_stm32ai=path_to_stm32ai,
-            stm32ai_output=stm32ai_output, stm32ai_version=stm32ai_version,
+            stm32ai_output=stm32ai_output, stedgeai_core_version=stedgeai_core_version,
             get_model_name_output=get_model_name_output)
 
     # Print footprints

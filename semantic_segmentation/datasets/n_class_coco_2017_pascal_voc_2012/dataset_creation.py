@@ -8,7 +8,6 @@
 
 import os
 import numpy as np
-import cv2
 import yaml
 import argparse
 from tqdm import tqdm
@@ -80,6 +79,7 @@ def analyze_dataset(new_train_ids: List[str], new_val_ids: List[str], output_dir
         output_dir (str): Path to the directory where the output is saved.
         class_map (List[str]): The list of class names to keep.
     """
+    import cv2
     print(f"Number of images in the new train set: {len(new_train_ids)}")
     print(f"Number of images in the new val set: {len(new_val_ids)}")
 

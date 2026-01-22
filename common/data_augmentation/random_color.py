@@ -32,7 +32,7 @@ def random_contrast(images, factor=None, pixels_range=(0.0, 1.0), change_rate=1.
     """
     This function randomly changes the contrast of input images.
     
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels].
@@ -94,7 +94,7 @@ def random_brightness(images, factor=None, pixels_range=(0.0, 1.0), change_rate=
     """
     This function randomly changes the brightness of input images.
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels].
@@ -149,7 +149,7 @@ def random_gamma(images, gamma=None, pixels_range=(0.0, 1.0), change_rate=1.0):
     according to the equation:
            Out = In**gamma
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels].
@@ -215,7 +215,7 @@ def random_hue(images, delta=None, pixels_range=(0.0, 1.0), change_rate=1.0):
     the hue channel, and the images are converted back to
     RGB representation.
     
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3].   
@@ -279,7 +279,7 @@ def random_saturation(images, delta=None, pixels_range=(0.0, 1.0), change_rate=1
     the saturation channel, and the images are converted back
     to RGB representation.
 
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3].
@@ -343,7 +343,7 @@ def random_value(images, delta=None, pixels_range=(0.0, 1.0), change_rate=1.0):
     the value channel, and the images are converted back to
     RGB representation.
 
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3].
@@ -405,7 +405,7 @@ def random_hsv(images,
     are added to the hue, saturation and value channels. Finally,
     the images are converted back to RGB representation.
 
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3]. 
@@ -501,7 +501,7 @@ def random_rgb_to_hsv(images, pixels_range=(0.0, 1.0), change_rate=0.25):
     This function converts input RGB images to HSV (Hue, Saturation,
     Value) representation.
 
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3].
@@ -541,7 +541,7 @@ def random_rgb_to_grayscale(images, pixels_range=(0.0, 1.0), change_rate=0.25):
     This function converts input RGB images to grayscale. Output 
     images are RGB images with identical R, G and B channels.
 
-    Arguments:
+    Args:
         images:
             Input RGB images, a tensor with shape
             [batch_size, width, height, 3].
@@ -583,7 +583,7 @@ def random_sharpness(images, factor=None, pixels_range=(0.0, 1.0), change_rate=1
     This function randomly increases the sharpness of input images.
     Use the random_blur() function if you want to decrease the sharpness.
     
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels]. 
@@ -669,7 +669,7 @@ def random_posterize(images, bits=None, pixels_range=(0.0, 1.0), change_rate=1.0
     for each color channel of input images. Color contraction
     occurs when the number of bits is reduced.
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels]. 
@@ -726,7 +726,7 @@ def random_invert(images, pixels_range=(0.0, 1.0), change_rate=0.25):
     """
     This function inverts (negates) all the pixel values of input images.
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels]. 
@@ -764,7 +764,7 @@ def random_solarize(images, pixels_range=(0.0, 1.0), change_rate=0.25):
     - a threshold is sampled in the interval [0, 255]
     - the pixels that are above the threshold are inverted (negated).
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels]. 
@@ -806,7 +806,7 @@ def random_autocontrast(images, cutoff=10, pixels_range=(0.0, 1.0), change_rate=
     the darkest pixel becomes black (0), and the lightest becomes
     white (255).
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images, a tensor with shape
             [batch_size, width, height, channels]. 

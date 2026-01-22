@@ -1,14 +1,15 @@
-# How can I quickly benchmark a model using the ST Model Zoo?
+# How can I quickly benchmark a model using the ST Model Zoo ?
 
-With ST Model Zoo, you can easily benchmark the memory footprints and inference time of a model on multiple hardwares using the [ST Edge AI Development Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
+With ST Model Zoo, you can easily benchmark the memory footprints and inference time of a model on multiple hardwares using the [ST Edge AI Developer Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
 
-## Operation modes:
+## Operation modes
 
 Depending on the model format you have, you can use the operation modes below:
 - Benchmarking:
-    - To benchmark a quantized model (.tflite or QDQ onnx)
+    - To benchmark a quantized model (.tflite or QDQ onnx), or a floating point model (.h5, .keras).
+    - Note that if you are benchmarking a float model on STM32N6, it will not use the NPU and instead run entirely on CPU.
 - Chain_qb:
-    - To quantize and benchmark a float model (.h5 or .onnx) in one pass
+    - To quantize and benchmark a float model (.h5, .keras or .onnx) in one pass
 <div align="left" style="width:100%; margin: auto;">
 
 ![image.png](../img/chain_qb.png)
@@ -19,25 +20,23 @@ For any details regarding the parameters of the config file, you can look here:
 - [Benchmark documentation](../README_OVERVIEW.md)
 
 
-## User_config.yaml:
+## User_config.yaml
 
 The way ST Model Zoo works is that you edit the user_config.yaml available for each use case and run the stm32ai_main.py python script. 
 
-Here is an example where we quantize an .h5 model from model zoo, before benchmarking it.
+Here is an example where we quantize a .h5 or a .keras model from the model zoo, before benchmarking it.
 
 The most important parts here are to define:
 - The path to the model
 - The operation mode
 - The quantization parameters
 - The benchmarking parameters (online or locally, see below)
-- The benchmarking hardware target
+- The benchmarking target board
 
 ```yaml
-# user_config.yaml 
 
 general:
   project_name: aed_project
-  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_256_64x96_tl/yamnet_256_64x96_tl.h5
   # Change to the path of the model you wish to evaluate
   logs_dir: logs
   saved_models_dir: saved_models
@@ -49,8 +48,11 @@ general:
 
 operation_mode: chain_qb 
 
+model:
+  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_e256_64x96_tl/yamnet_e256_64x96_tl.keras
+
 dataset:
-  name: esc10
+  dataset_name: esc10
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves']
   file_extension: '.wav'
 
@@ -106,7 +108,6 @@ quantization:
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -116,7 +117,7 @@ benchmarking:
   board: B-U585I-IOT02A
 
 mlflow:
-  uri: ./experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
@@ -126,9 +127,9 @@ hydra:
 
 When evaluating the model, it is highly recommended to use real data for the quantization.
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples)
 
-## Run the script:
+## Run the script
 
 Edit the user_config.yaml then open a terminal (make sure to be in the UC folder). Finally, run the command:
 
@@ -140,17 +141,17 @@ You can also use any .yaml file using command below:
 python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-name=name_of_your_yaml_file
 ```
 
-## Local benchmarking:
+## Local benchmarking
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI Core functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then run the installer.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
-## Available boards for benchmark:
+## Available boards for benchmark
 
 'STM32N6570-DK', 'STM32H747I-DISCO', 'STM32H7B3I-DK', 'STM32H573I-DK', 'NUCLEO-H743ZI2', 'STM32F769I-DISCO', 'STM32H735G-DK', 'STM32H7S78-DK', 'STM32F469I-DISCO', 'STM32F746G-DISCO', 'B-U585I-IOT02A', 'STM32L4R9I-DISCO', 'NUCLEO-F401RE', 'NUCLEO-G474RE', 'STM32MP257F-EV1', 'STM32MP135F-DK' and 'STM32MP157F-DK2'
 

@@ -2,5 +2,5 @@
 
 | Component                            | License              | Copyright |
 |:---------                            |:-------              |:----------|
-| src                                  | [SLA0044](./src/LICENSE.md)              | STMicroelectronics |
-
+| tf/src                               | [SLA0044](./tf/src/LICENSE.md)                   | STMicroelectronics |
+| tf/wrappers                          | [SLA0044](./tf/wrappers/LICENSE.md)              | STMicroelectronics |

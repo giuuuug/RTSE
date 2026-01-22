@@ -300,7 +300,7 @@ class AiRunnerSession:
 
     def __init__(self, name: str):
         """Constructor"""  # noqa: DAR101,DAR201,DAR401
-        self._parent: AiRunner = None
+        self._parent: Optional[AiRunner] = None
         self._name: str = name
 
     def __str__(self):
@@ -513,6 +513,7 @@ class AiRunner:
         SELF_TEST = 4
         RELOC = 8
         MEMORY_RW = 16
+        USBC = 32
 
     class Mode(Flag):
         """Mode values"""
@@ -905,7 +906,7 @@ class AiRunner:
 
         try:
             self._drv.connect(desc_, **kwargs)
-        except Exception as e:
+        except Exception as e:   # pylint: disable=broad-except
             self._last_err = str(e)
             return False
 
@@ -931,7 +932,7 @@ class AiRunner:
                     return ses_
         return None
 
-    def disconnect(self, force_all: bool =True) -> bool:
+    def disconnect(self, force_all: bool = True) -> bool:
         """Close the connection with the run-time"""  # noqa: DAR101,DAR201,DAR401
         if not force_all:
             # check is a session is on-going
@@ -1100,12 +1101,21 @@ class AiRunner:
         perf_counters_cumul = ''
         perf_counters_name = 'counter'
         perf_counters_max = 0
+        cpu_epoch_sw = 0
         if profiler['c_nodes']:
             if 'counters' in profiler['c_nodes'][0]:
                 perf_counters_name = profiler['c_nodes'][0]['counters'].get('type', 'counter')
                 for c_node in profiler['c_nodes']:
                     counters_ = build_perf_counters(c_node['counters'])
                     perf_counters_per_layer.append(counters_)
+                    if 'epoch' in c_node['layer_desc'] and len(counters_) > 0:
+                        if '(SW)' in c_node['layer_desc']:
+                            cpu_epoch_sw += counters_[0] + counters_[2]
+                        elif '(HYBRID)' in c_node['layer_desc']:
+                            cpu_epoch_sw += counters_[0] + counters_[2]
+                        elif '(extra ' in c_node['layer_desc']:
+                            if counters_[2] > (2 * counters_[1]):
+                                cpu_epoch_sw += counters_[0] + counters_[2]
                     if not perf_counters_cumul:
                         perf_counters_cumul = [0] * len(counters_)
                     for idx, val in enumerate(perf_counters_per_layer[-1]):
@@ -1136,11 +1146,20 @@ class AiRunner:
             dev_type_ = profiler['info']['device']['dev_type'].upper()
             if dev_type_ not in ('SIMULATOR', 'HOST') and profiler['info']['macc'] > 0:
                 n_cycles = (c_dur_.mean() * profiler['info']['device']['sys_clock']) / 1000
-                n_cycles_per_macc = n_cycles / profiler['info']['macc'] 
+                n_cycles_per_macc = n_cycles / profiler['info']['macc']
                 table_w.add_row(['cycles/MACC', ':', f'{n_cycles_per_macc:.2f}'])
+
         if perf_counters_cumul:
             rep_values_ = ' '.join([f'{val:,}' for val in perf_counters_cumul])
             table_w.add_row([f'{perf_counters_name}', ':', f'[{rep_values_}]'])
+
+        if 'n_init_time' in profiler['info']:
+            if profiler['info']['n_init_time'] != 0:
+                table_w.add_row(['network initialize time (ms)', ':', f"{profiler['info']['n_init_time']:.03f}"])
+
+        if 'n_install_time' in profiler['info']:
+            if profiler['info']['n_install_time'] != 0:
+                table_w.add_row(['network installation time (ms)', ':', f"{profiler['info']['n_install_time']:.03f}"])
 
         if profiler['debug']['stack_usage'] is not None:
             stack_ = profiler['debug']['stack_usage']
@@ -1171,7 +1190,7 @@ class AiRunner:
             len_ = len(f'{perf_counters_max:,} ')
             counter_fmt = '{:' + str(len_) + ',}'
             counter_perc_fmt = '{:' + str(len_ - 1) + '.1f}%'
-
+            total_ = 0
             table_w = TableWriter(indent=indent + 1, csep='-')
             table_w.set_title('Inference time per node')
 
@@ -1229,6 +1248,16 @@ class AiRunner:
             for line in res.splitlines():
                 print_drv(line)
             table_w.close()
+
+            # HW/SW activity
+            if total_ > 0 and len(perf_counters_cumul) > 1:
+                # Calculate total cpu activity ONLY FOR epoch HW (cpu prog + cpu clean)
+                cpu_epoch_hw = total_ - perf_counters_cumul[1] - cpu_epoch_sw
+                npu_perc_ = perf_counters_cumul[1] * 100 / total_
+                sw_perc_ = cpu_epoch_sw * 100 / total_
+                cpu_swctrl_percent = f'{cpu_epoch_hw * 100 / total_:.1f}%'
+                indent_ = ' ' * indent
+                print_drv(f'{indent_} HW: {npu_perc_:.1f}%, SW: {sw_perc_:.1f}%, SW ctrl: {cpu_swctrl_percent}')
 
         if not profiler['mode'] & AiRunner.Mode.PERF_ONLY and profiler['info']['inputs']:
             ext_indent = 1 if not no_details else 0

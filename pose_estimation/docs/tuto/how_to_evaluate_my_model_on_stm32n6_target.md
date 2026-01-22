@@ -8,38 +8,38 @@ The evaluation of a model consists in running several inferences on a representa
 
 ## Environment setup:
 The evaluation on the target requires installation and configuration of ST Edge AI Core you can find here :
-- [ST Edge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html)
+- [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html)
 - [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)
 
-A few configurations are required, please find below an example following a standard installation of STEdgeAI_Core v2.x.
+A few configurations are required, please find below an example following a standard installation of STEdgeAI_Core vx.y.
 
-- The 'C:/ST/STEdgeAI_Core/2.x/scripts/N6_scripts/config_n6.json' file should be updated to configure the N6 loader.
+- The 'C:/ST/STEdgeAI_Core/x.y/scripts/N6_scripts/config_n6.json' file should be updated to configure the N6 loader.
 ```json
 {
 	// The 2lines below are _only used if you call n6_loader.py ALONE (memdump is optional and will be the parent dir of network.c by default)
-	"network.c": "C:/ST/STEdgeAI_Core/2.0/script/N6_scripts/st_ai_output/network.c",
+	"network.c": "C:/ST/STEdgeAI_Core/x.y/script/N6_scripts/st_ai_output/network.c",
 	//"memdump_path": "C:/Users/foobar/CODE/stm.ai/stm32ai_output",
 	// Location of the "validation" project  + build config name to be built (if applicable)
 	// If using the provided project, valid build_conf names are "N6-DK" (CR5 boards), "N6-DK-legacy" (older-than-CR5-boards); "N6-Nucleo" can also be used for IAR project.
-	"project_path": "C:/ST/STEdgeAI_Core/2.0/Projects/STM32N6570-DK/Applications/NPU_Validation",
+	"project_path": "C:/ST/STEdgeAI_Core/x.y/Projects/STM32N6570-DK/Applications/NPU_Validation",
 	"project_build_conf": "N6-DK",
 	// Skip programming weights to earn time (but lose accuracy) -- useful for performance tests
 	"skip_external_flash_programming": false,
 	"skip_ram_data_programming": false
 }
 ```
-- The 'C:/ST/STEdgeAI_Core/2.x/scripts/N6_scripts/config.json' file should be updated to indicate the paths to find the external tools.
+- The 'C:/ST/STEdgeAI_Core/x.y/scripts/N6_scripts/config.json' file should be updated to indicate the paths to find the external tools.
 ```json
 {
 	// Set Compiler_type to either gcc or iar
 	"compiler_type": "iar",
 	// Set Compiler_binary_path to your bin/ directory where IAR or GCC can be found
 	//     If "Compiler_type" == gcc, then gdb_server_path shall point to where ST-LINK_gdbserver.exe can be found
-	"gdb_server_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_2.2.0.202409170845/tools/bin/",
-	"gcc_binary_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130/tools/bin/",
+	"gdb_server_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.win32_<*.*.*.>/tools/bin/",
+	"gcc_binary_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_<*.*.*.>/tools/bin/",
 	"iar_binary_path": "C:/Program Files/IAR Systems/Embedded Workbench 9.1/common/bin/",
 	// Full path to arm-none-eabi-objcopy.exe
-	"objcopy_binary_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_1.1.0.202410251130/tools/bin/arm-none-eabi-objcopy.exe",
+	"objcopy_binary_path": "C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.12.3.rel1.win32_<*.*.*.>/tools/bin/arm-none-eabi-objcopy.exe",
 	// Cube Programmer binary path
 	"cubeProgrammerCLI_binary_path": "C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe",
 	"cubeide_path":"C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE"
@@ -49,7 +49,7 @@ Please refer to [stedge ai core getting started on how to evaluate a model on ST
 
 
 ## Before launching the stm32ai_eval_on_target.py script:
-The script to be used for the evaluation on target is taking as parameter a configuration file. The one to use and to adapt is [evaluation_n6_config.yaml](../../src/config_file_examples/evaluation_n6_config.yaml) in config_file_examples folder.
+The script to be used for the evaluation on target is taking as parameter a configuration file. The one to use and to adapt is [evaluation_n6_config.yaml](../../config_file_examples/evaluation_n6_config.yaml) in config_file_examples folder.
 It is using a standard configuration file used for evaluation, with a few more parameters to define.
 Below are the main parameters to set.
 * The `model_path` in the general section : path to the model you want to evaluate.
@@ -76,9 +76,9 @@ In the Tools section:
 * `path_to_stedgeai` : This the path of the stedgeai core executable
 
 ```yaml
-general:
-   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/movenet_lightning_heatmaps_192_int8_pc.tflite
-   model_type: heatmaps_spe  # spe
+model:
+   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite
+   model_type: heatmaps_spe
 
 operation_mode: evaluation
 
@@ -91,6 +91,7 @@ evaluation:
    target: stedgeai_n6 # host, stedgeai_host, stedgeai_n6
 
 dataset:
+   dataset_name: coco
    keypoints: 17
    test_path: ./datasets/coco_val_single_pose
 
@@ -105,14 +106,14 @@ preprocessing:
 
 tools:
    stedgeai:
-      path_to_stedgeai: C:/ST/STEdgeAI_Core/2.1/Utilities/windows/stedgeai.exe
+      path_to_stedgeai: C:/ST/STEdgeAI_Core/x.y/Utilities/windows/stedgeai.exe
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 
@@ -120,7 +121,7 @@ hydra:
 Edit the evaluation_n6_config.yaml as explained above then open a CMD (make sure to be in the application folder containing the stm32ai_main.py script). Finally, run the command:
 
 ```powershell
-python stm32ai_main.py --config-path ./src/config_file_examples --config-name evaluation_n6_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples --config-name evaluation_n6_config.yaml
 ```
 You can also use any .yaml file using command below:
 ```powershell

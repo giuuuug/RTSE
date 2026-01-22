@@ -48,7 +48,7 @@ general:
 operation_mode: training
 
 dataset:
-  name: wisdm
+  dataset_name: wisdm
   # Define the classes you want to detect
   class_names: [Jogging,Stationary,Stairs,Walking]
   training_path: ../datasets/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt
@@ -59,13 +59,12 @@ dataset:
 preprocessing: # mandatory
   gravity_rot_sup: true  # mandatory
   normalization: false # mandatory
+model:
+  # Name of the model retrieved from model zoo
+  model_name: ign
+  input_shape: (24, 3, 1) # input shape: window of 24 sample of 3 axis accelerometer
 
 training:
-  model:
-    # Name of the model retrieved from model zoo
-    name: ign
-    input_shape: (24, 3, 1) # input shape: window of 24 sample of 3 axis accelerometer
-    pretrained_model_path: null
   resume_training_from: null
   # all the parameters below are standard in machine learning, you can look for them in google
   # they mostly depends on the topology of your model and will need a lot of testing
@@ -97,7 +96,7 @@ hydra:
     dir: ./experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/config_file_examples)
 
 
 ## Run the script:

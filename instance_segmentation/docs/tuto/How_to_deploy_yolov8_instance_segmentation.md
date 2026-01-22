@@ -16,7 +16,7 @@ software and any Combined Software accordingly.
 
 ## ST Ultralytics fork 
 
-The STMicroelectronics Ultralytics fork: [https://github.com/stm32-hotspot/ultralytics/tree/main/examples/YOLOv8-STEdgeAI](https://github.com/stm32-hotspot/ultralytics/tree/main/examples/YOLOv8-STEdgeAI) provides a collection of pre-trained and quantized yolov8 models. These models are compatible with STM32 platforms, ensuring seamless integration and efficient performance for edge computing applications.
+The STMicroelectronics Ultralytics fork: [https://github.com/stm32-hotspot/ultralytics/tree/main/examples/YOLOv8-STEdgeAI](https://github.com/stm32-hotspot/ultralytics/tree/main/examples/YOLOv8-STEdgeAI) provides a collection of pre-trained and quantized yolov8 models. These models are compatible with STM32 platforms and the STEdgeAI Core toolchain, ensuring seamless integration and efficient performance for edge computing applications.
 - Offers a set of pre-trained yolov8 models compatible with STM32 platforms and stm32ai-modelzoo.
 - Offers a quantization friendly yolov8 pose estimation model.
 These models are ready to be deployed and you can go directly to the deployment section.

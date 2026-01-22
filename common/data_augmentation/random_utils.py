@@ -11,6 +11,14 @@ import tensorflow as tf
 
 
 def grayscale_not_supported(images, function_name=None):
+    """
+    Docstring for grayscale_not_supported. Reports an error message if grayscale images are detected 
+    in the input images batch.
+    
+    Args: 
+        images (tf.Tensor): batch of images
+        function_name (str): name of the augmentation function
+    """
 
     message = f"\nFunction `{function_name}`: grayscale images are not supported."                         
     tf.debugging.assert_equal(tf.shape(images)[-1], tf.constant(3), message)
@@ -97,6 +105,15 @@ def remap_pixel_values_range(images, input_range, output_range, dtype=tf.float32
     For example, it can be used to remap input pixels with values in the [0, 255] 
     interval with uint8 data type to output pixels in the interval [0.0, 1.0] 
     with float data type.
+
+        Args:
+            images (tf.Tensor): batch of input images
+            input_range (tuple): pixels range at input
+            output_range (tuple): pixels range at output
+            dtype: type to cast output images
+
+        Returns:
+            (tf.Tensor): batch of remapped and casted images
     """
     if input_range != output_range:
         s0, s1 = input_range
@@ -118,6 +135,12 @@ def apply_change_rate(images, images_augmented, change_rate=1.0):
     get changed on average (75% won't get changed). If it is set
     to 0.0, no images are changed. If it is set to 1.0, all the
     images are changed.
+        Args:
+            images (tf.Tensor): input batch of images
+            images_augmented (tf.Tensor): output augmented images
+            change_rate (float): probability to apply augmentation
+        Returns:
+            (tf.Tensor): stacking of augmented and non augmented images 
     """
     
     if change_rate == 1.0:

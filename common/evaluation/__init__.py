@@ -6,5 +6,5 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 
-from .onnx_evaluation import predict_onnx, count_onnx_parameters, model_is_quantized
+from .onnx_evaluation import predict_onnx, count_onnx_parameters, model_is_quantized, predict_onnx_batch
 from .on_target_evaluation import gen_load_val

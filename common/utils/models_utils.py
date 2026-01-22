@@ -9,7 +9,7 @@
 
 import os
 from tabulate import tabulate
-from keras.utils.layer_utils import count_params
+from tensorflow.python.keras.utils.layer_utils import count_params
 from typing import Dict, Optional, Tuple, List
 import tensorflow as tf
 from tensorflow.keras.models import Model
@@ -20,13 +20,14 @@ from onnx import ModelProto
 import onnxruntime
 import mlflow
 from common.utils import log_to_file
+import torch
 
 
-def ai_interp_input_quant(ai_interp, data: np.array, data_scale: float, data_offset: float, file_extension: str):
+def ai_interp_input_quant(ai_interp, data: np.array, file_extension: str):
     ai_runner_input_details = ai_interp.get_inputs()[0]  # input
     if ai_runner_input_details.dtype in [np.uint8, np.int8]:
         # rescale the data between [0,255]
-        resc_data = (data-data_offset)/data_scale
+        resc_data = (data / ai_runner_input_details.scale[0]) + ai_runner_input_details.zero_point[0]
         # change the dtype of the data
         if ai_runner_input_details.dtype==np.int8:
             out_data = (resc_data-128).astype(np.int8)
@@ -34,11 +35,11 @@ def ai_interp_input_quant(ai_interp, data: np.array, data_scale: float, data_off
             out_data = resc_data.astype(np.uint8)
     else:
         out_data = data.astype(np.float32)
-    if ai_runner_input_details.shape[1:] != out_data.shape[1:]:
-        if file_extension == '.tflite':
-            out_data = np.transpose(out_data,[0,3,1,2])
-        elif file_extension == '.onnx':
-            out_data = np.transpose(out_data,[0,2,3,1])
+#    if ai_runner_input_details.shape[1:] != out_data.shape[1:]:
+#        if file_extension == '.tflite':
+#            out_data = np.transpose(out_data,[0,3,1,2])    # chlast -> chfirst
+#        elif file_extension == '.onnx':
+#            out_data = np.transpose(out_data,[0,2,3,1])    # chfirst -> chlast
     return out_data
 
 def ai_interp_outputs_dequant(ai_interp, predictions: np.array):
@@ -65,12 +66,12 @@ def ai_runner_interp(target: str, name_model: str):
         ai_runner_output_details : Dictionnary with details about the outputs of the model
     """
     from common.stm_ai_runner import AiRunner
-    if target == 'stedgeai_host' or target == 'stedgeai_n6':
+    if target in ['stedgeai_host', 'stedgeai_n6', 'stedgeai_h7p'] :
         print(f"Loading {target} for ST Edge AI inference of {name_model}")
         from common.stm_ai_runner import AiRunner
         if target == 'stedgeai_host':
             ai_runner_desc = 'st_ai_ws'
-        if target == 'stedgeai_n6':
+        if target in ['stedgeai_n6', 'stedgeai_h7p']:
             ai_runner_desc = 'serial:921600'
         ai_runner_interpreter = AiRunner()
         if not ai_runner_interpreter.connect(ai_runner_desc):
@@ -110,12 +111,12 @@ def get_model_name_and_its_input_shape(model_path: str = None,
                                        custom_objects: Dict = None) -> Tuple:
     """
     Load a model from a given file path and return the model name and
-    its input shape. Supported model formats are .h5, .tflite and .onnx.
+    its input shape. Supported model formats are .h5, .keras, .tflite and .onnx.
     The basename of the model file is used as the model name. The input
     shape is extracted from the model.
 
     Args:
-        model_path (str): A path to an .h5, .tflite or .onnx model file.
+        model_path (str): A path to an .h5, .keras, .tflite or .onnx model file.
         custom_objects (Dict): a dictionnary containing custom object from the model
 
     Returns:
@@ -130,7 +131,7 @@ def get_model_name_and_its_input_shape(model_path: str = None,
     model_name = Path(model_path).stem
 
     file_extension = Path(model_path).suffix
-    if file_extension == ".h5":
+    if file_extension in [".h5",".keras"]:
         # When we resume a training, the model includes the preprocessing layers
         # (augmented model). Therefore, we need to declare the custom data
         # augmentation layer as a custom object to be able to load the model.
@@ -138,7 +139,10 @@ def get_model_name_and_its_input_shape(model_path: str = None,
                         model_path,
                         custom_objects = custom_objects,
                         compile=False)
-        input_shape = tuple(model.input.shape[1:])
+        try :
+            input_shape = tuple(model.input.shape[1:])
+        except:
+            input_shape = tuple(model.inputs[0].shape[1:])
 
     elif file_extension == ".tflite":
         try:
@@ -169,7 +173,7 @@ def get_model_name_and_its_input_shape(model_path: str = None,
                                f"Received path {model_path}") from error
 
     else:
-        raise RuntimeError(f"\nUnknown/unsupported model file type.\nExpected `.tflite`, `.h5`, or `.onnx`."
+        raise RuntimeError(f"\nUnknown/unsupported model file type.\nExpected `.tflite`, `.h5`, `.keras`, or `.onnx`."
                            f"\nReceived path {model_path.split('.')[-1]}")
 
     return model_name, input_shape
@@ -239,7 +243,7 @@ def transfer_pretrained_weights(target_model: tf.keras.Model, source_model_path:
 
     Args:
         target_model (tf.keras.Model): The target model.
-        source_model_path (str): Path to the source model file (h5 file).
+        source_model_path (str): Path to the source model file (h5 or keras file).
         end_layer_index (int): Index of the last backbone layer (the first layer of the model has index 0).
         target_model_name (str): The name of the target model.
 
@@ -286,7 +290,7 @@ def model_summary(model):
         if layer_type == "InputLayer":
             layer_shape = model.input.shape
         else:
-            layer_shape = layer.output_shape
+            layer_shape = layer.output.shape
         is_trainable = True if layer.trainable else False
         num_params = layer.count_params()
         if layer.trainable:
@@ -309,9 +313,7 @@ def model_summary(model):
     print(108 * '=')
 
 
-def count_h5_parameters(output_dir: str = None,
-                        model_path: str = None):
-    model = tf.keras.models.load_model(model_path, compile=False)
+def count_h5_parameters(output_dir: str = None, model: tf.keras.Model = None):
     total_params = model.count_params()
     mlflow.log_metric(f"nb_params", total_params)
     log_to_file(output_dir, f"Nb params of float model : {total_params}")
@@ -411,6 +413,58 @@ def tf_dataset_to_np_array(input_ds, nchw=True, labels_included=True):
 
     return batch_data, batch_labels
 
+
+def torch_dataset_to_np_array(input_loader, nchw=True, labels_included=True, device="cpu"):
+    """
+    Converts a PyTorch DataLoader into two NumPy arrays containing the data and labels.
+
+    Parameters:
+    - input_loader (torch.utils.data.DataLoader): A PyTorch DataLoader yielding batches of
+      (images, labels) or (images,) tensors.
+    - nchw (bool): Whether to ensure the output images follow NCHW format (channels first).
+    - labels_included (bool): Whether the dataset includes labels.
+    - device (str): Device to move tensors to before converting (default: 'cpu').
+
+    Returns:
+    - tuple: (images_np, labels_np)
+        - images_np: numpy.ndarray containing all image tensors concatenated along batch dim.
+        - labels_np: numpy.ndarray containing all labels (if labels_included=True), else None.
+    
+    Example:
+    ```python
+    data, labels = torch_dataset_to_np_array(train_loader)
+    print(data.shape, labels.shape)
+    
+    images_only, _ = torch_dataset_to_np_array(pred_loader, labels_included=False)
+    print(images_only.shape)
+    ```
+    """
+    all_images = []
+    all_labels = []
+
+    # Ensure no gradients interfere
+    with torch.no_grad():
+        for batch in input_loader:
+            if labels_included:
+                images, labels = batch
+                images = images.to(device)
+                all_labels.append(labels.cpu().numpy())
+            else:
+                images = batch[0] if isinstance(batch, (list, tuple)) else batch
+                images = images.to(device)
+
+            all_images.append(images.cpu().numpy())
+
+    # Concatenate all batches
+    images_np = np.concatenate(all_images, axis=0)
+    labels_np = np.concatenate(all_labels, axis=0) if labels_included else None
+
+    # Reorder channels if needed
+    if nchw and images_np.ndim == 4:
+        # Convert from NCHW -> NHWC
+        images_np = np.transpose(images_np, (0, 2, 3, 1))
+
+    return images_np, labels_np
 
 def compute_confusion_matrix(test_set: tf.data.Dataset = None, model: Model = None) -> Tuple[np.ndarray, np.float32]:
     """

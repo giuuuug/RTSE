@@ -7,7 +7,7 @@
 
 This use case provides tools for running **prediction** and **benchmark** services on depth estimation models using the STM32AI Model Zoo framework.
 
-A minimal set of example configuration files is available in the [`src/config_file_examples/`](../src/config_file_examples/) folder to help you get started with supported services. Additionally, the [STM32AI Model Zoo repository](https://github.com/STMicroelectronics/stm32ai-modelzoo/) offers ready-to-use models and their configuration `.yaml` files.
+A minimal set of example configuration files is available in the [`config_file_examples/`](../config_file_examples/) folder to help you get started with supported services. Additionally, the [STM32AI Model Zoo repository](https://github.com/STMicroelectronics/stm32ai-modelzoo/) offers ready-to-use models and their configuration `.yaml` files.
 
 
 ## How to Use

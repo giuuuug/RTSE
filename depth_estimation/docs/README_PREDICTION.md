@@ -24,9 +24,12 @@ The `general` section and its attributes are shown below.
 ```yaml
 general:
   project_name: depth_estimation_fast_depth
-   model_path: ../../stm32ai-modelzoo/depth_estimation/fast_depth/Public_pretrainedmodel_public_dataset/npy_depth_v2/fast_depth_320/fast_depth_320_int8_pc.tflite
-   model_type: fast_depth
   gpu_memory_limit: 16  # Maximum amount of GPU memory in GBytes that TensorFlow may use (an integer).
+
+model: 
+  model_path: ../../stm32ai-modelzoo/depth_estimation/fastdepth/Public_pretrainedmodel_public_dataset/nyu_depthv2/fastdepth_320/fastdepth_320_int8.tflite
+  model_type: fast_depth
+  
 ```
 
 The `model_path` attribute is used to provide the path to the model file you want to use to run the operation mode you selected.
@@ -60,8 +63,13 @@ The `color_mode` attribute can be set to either *"grayscale"*, *"rgb"*, or *"rgb
 </details></ul>
 <details open><summary><a href="#6"><b>6. Specify the Path to the Images to Predict</b></a></summary><a id="6"></a>
 
-In the 'prediction' section, users must provide the path to the directory containing the images to predict using the `test_files_path` attribute.
+In the 'dataset' section, users must provide the path to the directory containing the images to predict using the `prediction_path` attribute as well as the name of the dataset as shown bellow: 
 
+```yaml
+dataset: 
+  dataset_name: nyu_depthv2
+  prediction_path : ./datasets/nyu_depthv2/pred
+```
 
 </details></ul>
 <details open><summary><a href="#8"><b>8. Hydra and MLflow settings</b></a></summary><a id="8"></a>
@@ -71,14 +79,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>

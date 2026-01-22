@@ -1,6 +1,7 @@
 # Image Classification STM32 Model Quantization
 
 Post-training quantization is a good way to optimize your neural network models before deploying them on a target. This makes the deployment process more efficient on your embedded devices by reducing the required memory usage (Flash/RAM) and reducing the inference time, all with little-to-no degradation in model accuracy. We support ONNX quantizer (QDQ format) and TensorFlow Lite converter quantization.
+Please, note that to fully benefit from STM32N6 neural accelerator your model needs to be quantized (.tflite or .onnx).
 
 This tutorial shows how to quantize a floating-point model with real data. As an example, we will demonstrate the workflow on the [tf_flowers](https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz) classification dataset.
 
@@ -18,12 +19,12 @@ Information about the dataset you want to use for activations calibration is pro
 
 ```yaml
 dataset:
-  name: flowers 
-  class_names: [daisy, dandelion, roses, sunflowers, tulips]
-  test_path:
+  dataset_name: tf_flowers 
+  class_names: [daisy, dandelion, roses, sunflowers, tulips] # Optional
+  test_path: # Optional
   quantization_path: ../datasets/flower_photos
-  quantization_split: 0.4
-  seed: 0
+  quantization_split: 0.4 # Optional
+  seed: 0 # Optional
 ```
 
 In this example, the only provided path is the `quantization_path`. It could be the full training set or a specific set dedicated to activations calibration. If you only want to quantize the model on a random part of your quantization set, simply set the percentage value in the `quantization_split` parameter.
@@ -64,10 +65,11 @@ The `color_mode` attribute must be one of "*grayscale*", "*rgb*" or "*rgba*".
 <details open><summary><a href="#1-3">1.3 Set the model and quantization parameters</a></summary><a id="1-3"></a>
 
 ```yaml
-general:
-   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft/mobilenet_v2_0.35_128_fft.h5
+model:
+   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft/mobilenetv2_a035_128_fft.keras
    
 quantization:
+  operating_mode: # Optional, if not set then operating_mode is 'default'
   quantizer: TFlite_converter
   quantization_type: PTQ
   quantization_input_type: uint8
@@ -76,21 +78,26 @@ quantization:
   optimize: False           # Optional, defaults to False.
   target_opset: 17          # Optional, defaults to 17 if not provided. Only used for when using Onnx_quantizer
   export_dir: quantized_models
-  extra_options: calib_moving_average # Optional, only applies to Onnx_quantizer
+  onnx_quant_parameters: # Optional, only applies to Onnx_quantizer
+  onnx_extra_options:  # Optional, only applies to Onnx_quantizer
+  iterative_quant_parameters: # Optional, only applies to Onnx_quantizer
 ```
 
 **where**:
 
-- `model_path` - *String*, specifies the path of the model to be quantized.
+- `operating_mode` - *String*, can be "default", "inspection" or "full_auto". In case onnx quantizer is selected several operating modes are possible either for debug or for mixed precision quantization. They are all further detailed in a dedicated [README](./README_QUANTIZATION_TOOL.md).
+- `model_path` - *String*, specifies the path of the model to be quantized. Can be '.onnx' or '.keras'
 - `quantizer` - *String*, only options are "TFlite_converter" or "Onnx_quantizer" which will convert model trained weights from float to integer values. The quantized model will be saved in TensorFlow Lite or QDQ Onnx formats respectively.
 - `quantization_type` - *String*, only option is "PTQ", i.e., "Post-Training Quantization".
 - `quantization_input_type` - *String*, can be "int8", "uint8" or "float", represents the quantization type for the model input.
 - `quantization_output_type` - *String*, can be "int8", "uint8" or "float", represents the quantization type for the model output.
 - `granularity` - *String*, can be "per_tensor" or "per_channel", defines the quantization granularity.
-- `optimize` - *Boolean*, can be either True or False, controls whether the user wants to optimize the model before attempting to quantize it. Only used when "TFlite_converter" is used.
+- `optimize` - *Boolean*, can be either True or False, controls whether the user wants to optimize the model before attempting to quantize it. Only used when "TFlite_converter" and `granularity` is `per_tensor`.
 - `target_opset` - *Integer*, the target opset for the ONNX models, only used when "Onnx_quantizer" is used.
 - `export_dir` - *String*, refers to the directory name to save the quantized model.
-- `extra_options` - *String*, only option supported for now is "calib_moving_average" and only applies to ONNX quantization. This field is optional.
+- `onnx_quant_parameters` - *Field*, specific parameters for onnx quantizer only. Optional. For more details, please refer to the dedicated [README](./README_QUANTIZATION_TOOL.md).
+- `onnx_extra_options` - *Field*, options supported for onnx quantizer. This field is optional. For more details, please refer to the dedicated [README](./README_QUANTIZATION_TOOL.md).
+- `iterative_quant_parameters` - *Field*, for onnx quantizer only. Mandatory for mixed precision `full_auto` operating mode. For more details, please refer to the dedicated [README](./README_QUANTIZATION_TOOL.md).
 
 Please note that whatever the values set in `quantization_input_type` and `quantization_output_type`, the ONNX QDQ model generated at this stage has always a floating-point input and output.
 
@@ -109,14 +116,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details>
@@ -129,22 +136,22 @@ mlflow:
 To launch your model quantization using a real dataset, run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name quantization_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name quantization_config.yaml
 ```
 The quantized TensorFlow Lite model can be found in the corresponding **experiments_outputs/** folder.
 
 
 
-In case you want to evaluate the accuracy of the quantized model, you can either launch the evaluation operation mode on the generated quantized model (please refer to the evaluation **[readme](./README_EVALUATION.md)** that describes in detail how to proceed) or you can use chained services like launching the [chain_eqe](../src/config_file_examples/chain_eqe_config.yaml) example with the command below:
+In case you want to evaluate the accuracy of the quantized model, you can either launch the evaluation operation mode on the generated quantized model (please refer to the evaluation **[readme](./README_EVALUATION.md)** that describes in detail how to proceed) or you can use chained services like launching the [chain_eqe](../config_file_examples/chain_eqe_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqe_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqe_config.yaml
 ```
 
-In case you want to evaluate your quantized model footprints, you can either launch the benchmark operation mode on the generated quantized model (please refer to the benchmarking **[readme](./README_BENCHMARKING.md)** that describes in detail how to proceed) or you can use chained services like launching the [chain_qb](../src/config_file_examples/chain_qb_config.yaml) example with the command below:
+In case you want to evaluate your quantized model footprints, you can either launch the benchmark operation mode on the generated quantized model (please refer to the benchmarking **[readme](./README_BENCHMARKING.md)** that describes in detail how to proceed) or you can use chained services like launching the [chain_qb](../config_file_examples/chain_qb_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qb_config.yaml
 ```
 Chained services work whether you specify a quantization dataset or not (random quantization).
 

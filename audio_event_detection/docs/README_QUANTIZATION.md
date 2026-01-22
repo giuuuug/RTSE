@@ -1,11 +1,12 @@
 # Audio event detection STM32 model quantization
 
 Quantization is a good way to optimize your models before deploying.
-Quantizing your models can drastically reduce their memory footprint (both for RAM and Flash), and speed up their inference time. However, this usually comes at the cost of a small performance drop.
+Quantizing your models can drastically reduce their memory footprint (both for RAM and Flash), and speed up their inference time. This is done by representing weights and activation with lower bit precision, in our case going from 32-bit floating point to 8 bit integer.
+However, this usually comes at the cost of a small performance drop.
 Currently, the model zoo only supports Post-training quantization (PTQ) using int8 weights.
 
 This tutorial will guide you through quantizing a Keras floating point model using the model zoo using post-training quantization. 
-The model zoo can also quantize floating point ONNX models. For more details, please refer to please refer to section 3.11 of the [main README](./README_OVERVIEW.md)
+The model zoo can also quantize floating point ONNX models. For more details, please refer to please refer to section 3.12 of the [main README](./README_OVERVIEW.md).
 
 We strongly recommend you follow the [training tutorial](./README_TRAINING.md) first. We will continue using the ESC-10 dataset for this tutorial.
 
@@ -17,19 +18,19 @@ We strongly recommend you follow the [training tutorial](./README_TRAINING.md) f
 The [model zoo pretrained_models](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/audio_event_detection/) contains several subfolders, one for each model architecture.
 Some of these models need quite different pre-processing, feature extraction and training parameters, and using different ones could lead to wildly varying performance.
 
-**Each of these subdirectories contains the config.yaml file that was used to train the model**.
-To use these in quantization, copy them over to the [UC](../) folder, and rename them to `user_config.yaml`
+**Each of these subdirectories contains the config.yaml file that was used to train the model.**.
+To use these in quantization, copy them over to the [UC](../) folder, and rename them to `user_config.yaml`.
 
-If using one of these configuration files, you will need to change the `operation_mode` parameter to `quantization`. See the next section for more information
+If using one of these configuration files, you will need to change the `operation_mode` parameter to `quantization`. See the next section for more information.
 
-**If you want to reproduce the listed performance, we recommend you use these available .yaml files**
+**If you want to reproduce the listed performance, we recommend you use these available .yaml files.**
 
-**Performance may be quite different if you use different parameters**
+**Performance may be quite different if you use different parameters.**
 
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Operation mode</a></summary><a id="1-2"></a>
 
-The `operation_mode` attribute of the configuration file lets you choose which service of the model zoo you want to use (training, evaluation, quantization, deployment, or benchmarking). You can even chain these services together ! Refer to section 3.2 of the [main README](./README_OVERVIEW.md)
+The `operation_mode` attribute of the configuration file lets you choose which service of the model zoo you want to use (training, evaluation, quantization, deployment, or benchmarking). You can even chain these services together ! Refer to section 3.2 of the [main README](./README_OVERVIEW.md).
 
 For this tutorial, you just need to set `operation_mode` to `"quantization"`, like so : 
 
@@ -38,23 +39,26 @@ operation_mode: quantization
 ```
 
 </details></ul>
-<ul><details open><summary><a href="#1-3">1.3 General settings</a></summary><a id="1-3"></a>
+<ul><details open><summary><a href="#1-3">1.3 General and model settings</a></summary><a id="1-3"></a>
 
 The first section of the configuration file is the `general` section that provides information about your project.
 
-You will need to provide the path to the Keras `.h5` model you wish to quantize in the `model_path` attribute, like in this example :  
+You will need to provide the path to the Keras `.h5` or `.keras` model, or ONNX model you wish to quantize in the `model_path` attribute of the `model` section, like in this example :  
 
 ```yaml
 general:
    project_name: myproject           # Project name. Optional, defaults to "<unnamed>".
    logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
    saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-   model_path:  <path_to_model_to_quantize.h5>         # Path to a model file. # Leave blank if you want to train from scratch, or perform transfer learning with a backbone provided in the model zoo.
+  
    global_seed: 120                  # Seed used to seed random generators (an integer). Optional, defaults to 120.
    deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
    display_figures: True             # Enable/disable the display of figures (training learning curves and confusion matrices).
                                      # Optional, defaults to True.
    gpu_memory_limit: 5              # Maximum amount of GPU memory in GBytes that TensorFlow may use (an integer).
+
+model:
+  model_path : <path_to_the_model> # Path to the .h5, .keras or .onnx file of the model you wish to quantize.
 ```
 
 The `logs_dir` attribute is the name of the directory where the MLFlow and TensorBoard files are saved. The `saved_models_dir` attribute is the name of the directory where models are saved, which includes the quantized model. These two directories are located under the top level <hydra> directory.
@@ -68,7 +72,7 @@ Information about the dataset you want use is provided in the `dataset` section 
 
 ```yaml
 dataset:
-  name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
+  dataset_name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves'] # Names of the classes to use when training your model
   file_extension: '.wav' # File extension of the audio files
   training_audio_path: ./datasets/ESC-50/audio # Mandatory
@@ -153,7 +157,6 @@ feature_extraction:
   norm: None
   htk : True
   to_db : False
-  include_last_patch: False
 ```
 For more details on what each parameter does, please refer to section 3.8 of the [main README](./README_OVERVIEW.md)
 Different models are trained using different set of feature extraction parameters, and using different ones may lead to poor performance. Please refer to section <a href="#2.2"> 2.2 </a> of this README for instructions on how to retrieve the configuration files used to train the different pretrained models provided in the zoo.
@@ -194,9 +197,9 @@ All quantization artifacts, figures, and models are saved under the output direc
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
-By default, the output directory is `src/experiments_outputs/<date_time_of_your_run>/`(../src/experiments_outputs). Note that this directory will NOT exist before you run the model zoo at least once.
+By default, the output directory is `./tf/src/experiments_outputs/<date_time_of_your_run>/`. Note that this directory will NOT exist before you run the model zoo at least once.
 
 This directory contains the following file, among others : 
 - The quantized_models contains a quantized_model.tflite file, which is your quantized model !
@@ -207,7 +210,7 @@ For more details on the list of outputs, and the structure of the output directo
 <details open><summary><a href="#4"><b>4. Run MLFlow</b></a></summary><a id="4"></a>
 
 MLflow is an API for logging parameters, code versions, metrics, and artifacts while running machine learning code and for visualizing results.
-To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command:
+To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command from `./tf/src/experiment_outputs/`:
 
 ```bash
 mlflow ui

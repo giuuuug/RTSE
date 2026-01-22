@@ -21,6 +21,24 @@ import numpy as np
 import tensorflow as tf
 
 
+def set_all_layers_trainable_parameter(model: tf.keras.Model, trainable=True) -> None: 
+    """
+    This function sets all elements in model.layers to be trainable or not depending on boolean value.
+
+    Arguments:
+        model (tf.keras.Model): the model.
+        trainable (boolean): if True makes all layer trainable, if False makes all layers not trainable
+        
+
+    Returns:
+        None
+    """
+    
+    model.trainable = trainable
+    for layer in model.layers:
+      layer.trainable = trainable
+
+
 def set_frozen_layers(model: tf.keras.Model, frozen_layers: str = None) -> None:
     """
     This function freezes (makes non-trainable) the layers that are 
@@ -46,7 +64,7 @@ def set_frozen_layers(model: tf.keras.Model, frozen_layers: str = None) -> None:
     """
     if frozen_layers == 'None':
         # Train the whole model
-        model.trainable = True
+        set_all_layers_trainable_parameter(model, trainable=True)
         return
     
     frozen_layers = str(frozen_layers)
@@ -66,7 +84,7 @@ def set_frozen_layers(model: tf.keras.Model, frozen_layers: str = None) -> None:
         frozen_indices[i] = True
 
     # Freeze layers
-    model.trainable = True
+    set_all_layers_trainable_parameter(model, trainable=True)
     num_trainable = num_layers
     for i in range(num_layers):
         if frozen_indices[i]:

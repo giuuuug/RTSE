@@ -17,13 +17,12 @@ operation_mode: prediction
 ```
 
 </details></ul>
-<details open><summary><a href="#3"><b>3. Global settings</b></a></summary><a id="3"></a>
+<details open><summary><a href="#3"><b>3. Model settings</b></a></summary><a id="3"></a>
 
-The `general` section and its attributes are shown below.
+The `model` section and its attributes are shown below.
 
 ```yaml
-general:
-  project_name: neural_style_transfer
+model:
   model_type: xinet_picasso_muse # xinet_picasso_muse
   # path to a `.tflite` or `.onnx` file.
   model_path:  ../../stm32ai-modelzoo/neural_style_transfer/xinet_picasso_muse/Public_pretrainedmodel_public_dataset/coco_2017_80_classes_picasso/xinet_a75_picasso_muse_160/xinet_a75_picasso_muse_160_nomp.tflite
@@ -40,7 +39,8 @@ The `dataset` section and its attributes are shown in the YAML code below.
 
 ```yaml
 dataset:
-  name: COCO                    # Dataset name. Optional, defaults to "<unnamed>".
+  dataset_name: coco                    # Dataset name. required, supports only coco value.
+  prediction_path: ../datasets/images/coco
 ```
 
 The `name` attribute is optional and can be used to specify the name of your dataset. For this use case, the `classes_file_path` and the `class_names` attributes are to be unset.
@@ -110,14 +110,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>

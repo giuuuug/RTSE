@@ -1,6 +1,6 @@
 # How can I quickly benchmark a model using the ST Model Zoo?
 
-With ST Model Zoo, you can easily evaluate the memory footprints and inference time of a model on multiple hardwares using the [ST Edge AI Development Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
+With ST Model Zoo, you can easily evaluate the memory footprints and inference time of a model on multiple hardwares using the [STEdgeAI Development Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
 
 ## Operation modes:
 
@@ -8,7 +8,7 @@ Depending on the model format you have, you can use the operation modes below:
 - Benchmarking:
     - To benchmark a quantized model (.tflite or QDQ onnx)
 - Chain_qb:
-    - To quantize and benchmark a float model (.h5 or .onnx) in one pass
+    - To quantize and benchmark a float model (.keras or .onnx) in one pass
 <div align="left" style="width:100%; margin: auto;">
 
 ![image.png](../img/chain_qb.png)
@@ -26,7 +26,7 @@ For any details regarding the parameters of the config file, you can look here:
 
 The way ST Model Zoo works is that you edit the user_config.yaml available for each use case and run the stm32ai_main.py python script. 
 
-Here is an example where we quantize a .h5 model from model zoo, before benchmarking it.
+Here is an example where we quantize a .keras model from model zoo, before benchmarking it.
 For only the benchmmarking operation mode, you can delete the parts not needed if you want.
 
 The most important parts here are to define:
@@ -39,10 +39,10 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml
 
-general:
+model:
   # path to the model to benchmark
-  model_path: ../../stm32ai-modelzoo/object_detection/st_ssd_mobilenet_v1/ST_pretrainedmodel_public_dataset/coco_2017_person/st_ssd_mobilenet_v1_025_256/st_ssd_mobilenet_v1_025_256.h5
-  model_type: st_ssd_mobilenet_v1
+  model_path: ../../../stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416.keras
+  model_type: st_yoloxn
 
 operation_mode: chain_qb
 
@@ -75,9 +75,8 @@ quantization:
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
-    on_cloud: True # ST Edge AI Cloud or locally with ST Edge AI
+    on_cloud: True # STEdgeAI Cloud or locally with ST Edge AI
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
   path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe
 
@@ -86,11 +85,11 @@ benchmarking:
   board: STM32H747I-DISCO
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 Here the quantization is made with random data as no data were provided and main goal was to have a quick insight on the performances of a quantized model for a specific HW. When evaluating the model, it is highly recommended to use real data for the final quantization of course.
@@ -98,7 +97,7 @@ Here the quantization is made with random data as no data were provided and main
 ### Local benchmarking:
 
 To make the benchmark locally instead of using the ST Edge AI Development Cloud you need to add the path for path_to_stedgeai and to set on_cloud to false in the yaml.
-- [ST Edge AI](https://www.st.com/en/embedded-software/x-cube-ai.html)
+- [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html)
 - [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)
 
 ## Run the script:

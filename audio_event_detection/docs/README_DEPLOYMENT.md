@@ -1,6 +1,6 @@
 # Audio Event Detection STM32 model deployment
 
-This tutorial shows how to deploy your pre-trained keras or tflite models on an STM32 board using *STM32Cube.AI*. 
+This tutorial shows how to deploy your pre-trained keras, ONNX or tflite models on an STM32 board using *STEdgeAI*.
 
 In addition, this tutorial will also explain how to deploy a model from the **[ST public model zoo](./README_MODELS.md)** directly on your *STM32 target board*. In this version deployment on the [B-U585I-IOT02A](https://www.st.com/en/evaluation-tools/b-u585i-iot02a.html), and [STM32N6570-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html) are supported.
 
@@ -14,18 +14,17 @@ Please check out [STM32 model zoo](./README_MODELS.md) for audio event detection
 
 <ul><details open><summary><a href="#1-1">1.1 Hardware Setup</a></summary><a id="1-1"></a>
 
-The [stm32 C application](../../application_code/sensing_free_rtos/STM32U5/README.md) is running on an STMicroelectronics evaluation kit board called [B-U585I-IOT02A](https://www.st.com/en/evaluation-tools/b-u585i-iot02a.html), or on the [STM32N6570-DK]. The current version of the application code only supports usage of the digital microphone on both boards.
+The [STM32 C application](../../application_code/sensing/STM32U5/README.md) is running on an STMicroelectronics evaluation kit board called [B-U585I-IOT02A](https://www.st.com/en/evaluation-tools/b-u585i-iot02a.html), or on the [STM32N6570-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html). The current version of the application code only supports usage of the digital microphone on both boards.
 
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Software requirements</a></summary><a id="1-2"></a>
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
 
 For local installation :
 
-- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
-The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
+- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) __v1.17.0__.
+- Download and install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html).
 
 </details></ul>
 <ul><details open><summary><a href="#1-3">1.3 Specifications</a></summary><a id="1-3"></a>
@@ -60,23 +59,25 @@ operation_mode: deployment
 ```
 
 </details></ul>
-<ul><details open><summary><a href="#2-2">2.2 General settings</a></summary><a id="2-2"></a>
+<ul><details open><summary><a href="#2-2">2.2 General and model settings</a></summary><a id="2-2"></a>
 
 The first section of the configuration file is the `general` section that provides information about your project.
 
-Critically, you must set the `model_path` attribute to the path of the model you wish to deploy, like in this example : 
+Critically, you must set the `model_path` attribute to the path of the model you wish to deploy, in the `model`section like in this example : 
 
 ```yaml
 general:
   project_name: myproject           # Project name. Optional, defaults to "<unnamed>".
   logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
-  saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-  model_path: ../pretrained_models/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_256_64x96_tl/yamnet_256_64x96_tl_int8.tflite          # Path to the model you want to deploy
+  saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".    
   global_seed: 120                  # Seed used to seed random generators (an integer). Optional, defaults to 120.
   deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
   display_figures: True             # Enable/disable the display of figures (training learning curves and confusion matrices).
                                      # Optional, defaults to True.
   gpu_memory_limit: 5              # Maximum amount of GPU memory in GBytes that TensorFlow may use (an integer).
+
+model:
+  model_path: <path_to_your_tflite_or_onnx_file>
 ```
 
 </details></ul>
@@ -86,7 +87,7 @@ Information about the dataset you want to use is provided in the `dataset` secti
 
 ```yaml
 dataset:
-  name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
+  dataset_name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves'] # Names of the classes your model was trained on
   # Must be included when deploying as well.
   file_extension: '.wav' # File extension of the audio files
@@ -175,7 +176,6 @@ feature_extraction:
   norm: None
   htk : True
   to_db : False
-  include_last_patch: False # Not used during deployment
 ```
 For more details on what each parameter does, please refer to section 3.8 of the [main README](./README_OVERVIEW.md)
 
@@ -185,16 +185,15 @@ Different models are trained using different set of feature extraction parameter
 <ul><details open><summary><a href="#2-6">2.6 Configuring the tool section</a></summary><a id="2-6"></a>
 
 Next, you'll want to configure the `tools` section in your configuration file. This section
-This section covers the usage of the STM32-X-CUBEAI tool, which benchmarks .tflite and .h5 models, and converts them to C code.
+This section covers the usage of the STEdgeAI tool, which benchmarks .tflite, .keras and .h5 models, and converts them to C code.
 
-To convert your model to C code, you can either use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) (requires making an account), or use the local versions of CubeAI and CubeIDE you installed earlier in the tutorial.
+To convert your model to C code, you can either use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) (requires making an account), or use the local versions of STEdgeAI Core and CubeIDE you installed earlier in the tutorial.
 
-If you wish to use the [STM32 developer cloud](https://stedgeai-dc.st.com/home), simply set the `on_cloud` attribute to True, like in the example below. If using the developer cloud, you do not need to specify paths to STM32CubeAI or CubeIDE.
+If you wish to use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home), simply set the `on_cloud` attribute to True, like in the example below. If using the developer cloud, you do not need to specify paths to STEdgeAI Core or CubeIDE.
 
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -212,13 +211,15 @@ For deployment on B-U585I-IOT02A :
 
 ```yaml
 deployment:
-  c_project_path: ../../application_code/sensing_free_rtos/STM32U5
+  c_project_path: ../../application_code/sensing/STM32U5
   IDE: GCC
   verbosity: 1
   hardware_setup:
     serie: STM32U5
     board: B-U585I-IOT02A
-  unknown_class_threshold: 0.0 # Threshold used for OOD detection. Mutually exclusive with use_garbage_class # Set to 0 to disable. To enable, set to any float between 0 and 1.
+  unknown_class_threshold: 0.0 # Threshold used for OOD detection. Mutually exclusive with use_garbage_class
+                               # Set to 0 to disable. To enable, set to any float between 0 and 1.
+  build_conf: Debug
 ```
 
 
@@ -226,22 +227,27 @@ For deployment on STM32N6570-DK :
 
 ```yaml
 deployment:
-  c_project_path: ../../application_code/audio/STM32N6/
+  c_project_path:  ../application_code/audio/STM32N6
   IDE: GCC
   verbosity: 1
   hardware_setup:
     serie: STM32N6
     board: STM32N6570-DK
-  unknown_class_threshold: 0.0 # Threshold used for OOD detection. Mutually exclusive with use_garbage_class # Set to 0 to disable. To enable, set to any float between 0 and 1.
+  build_conf : "BM" # this is default configuration
+  # build_conf : "FREERTOS"
+  # build_conf : "BM_LP"
+  # build_conf : "FREERTOS_LP"
+  unknown_class_threshold: 0.5 # Threshold used for OOD detection. Mutually exclusive with use_garbage_class
+                               # Set to 0 to disable. To enable, set to any float between 0 and 1.
+
 ```
 
 
-There are two C applications available for AED when deploying on STM32U5. [sensing_free_rtos](../../application_code/sensing_free_rtos/STM32U5/README.md) and [sensing_thread_x](../../application_code/sensing_thread_x/STM32U5/README.md). These applications are functionally identical and have the same performance, but use different middleware and thus have difference licences. [sensing_free_rtos](../../application_code/sensing_free_rtos/STM32U5/README.md) generally has more permissive licences.
+There is one C application available for AED when deploying on STM32N6, found under [application_code/sensing/STM32U5/](../../application_code/sensing/STM32U5/README.md). This the same application code usable for deploying Human Activity Recognition models.
 
 There is one C application available for AED when deploying on STM32N6, found under [application_code/audio/STM32N6/](../../application_code/audio/STM32N6/).
 
-**Make sure you choose the correct application for the board you want to deploy on !**
-
+**Make sure you choose the correct application code path for the board you want to deploy on**
 
 You only need to specify the path to one of these applications in `c_project_path`.
 Currently, the C application only supports the `B-U585I-IOT02A` and `STM32N6570-DK` board.
@@ -255,18 +261,18 @@ The model zoo uses MLFlow to record logs when running. You'll want to configure 
 
 ```yaml
 mlflow:
-  uri: ./experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
-You'll then be able to access the logs by going to `src/experiments_outputs` in your favourite shell, using the command `mlflow ui`, and accessing the provided IP address in your browser.
+You'll then be able to access the logs by going to `./tf/src/experiments_outputs` in your favourite shell, using the command `mlflow ui`, and accessing the provided IP address in your browser.
 
 </details></ul>
 </details>
 <details open><summary><a href="#3"><b>3. Out of distribution sample detection in the model zoo</b></a></summary><a id="3"></a>
 
 A common issue in audio event detection applications is being able to reject samples which do not come from one of the classes the model is trained on.
-The model zoo provides several baseline options for doing this. 
+The model zoo provides several baseline options for doing this.
 
-The first option consists of thresholding the network output probabilities at runtime. **This is a naïve baseline which does not yield great results**, but is a good starting point. 
+The first option consists of thresholding the network output probabilities at runtime. **This is a naïve baseline which does not yield great results**, but is a good starting point.
 
 You can set the threshold in the config file, by tuning the `deployment.unknown_class_threshold` parameters (see section <a href="#2-7">2.7 Configuring the deployment section</a>).
 This parameter is a float between 0 and 1.
@@ -312,19 +318,19 @@ Once flashed the board can be connected through a serial terminal and the output
 To connect the serial port please follow the steps shown in the figure below:
 ![plot](./img/tera_term_connection.png)
 
-**IMPORTANT NOTE : The baud rate used in the serial port for different versions of the applications is different. If using the freeRTOS version (located in`application_code/sensing_free_rtos/STM32U5`), the expected baud rate is 115200, and for the ThreadX version (located in `application_code/sensing_thread_x/STM32U5`) it is 921600.**
+**If deploying on STM32U5 using the application loacated in `application_code/audio/STM32U5/`, the expected baud rate is 115200**
 
-**If deploying on STM32N6 using the application loacated in `application_code/audio/STM32N6/`, the expected baud rate is 14400 !**
+**If deploying on STM32N6 using the application loacated in `application_code/audio/STM32N6/`, the expected baud rate is 14400**
 
-After successful connection perform a reset using [RESET] button on the board. This will reset the board and start running the inference of the AI model on the board using real-time data from the digital microphone. Following figure shows a screenshot of [stm32ai application code](../../application_code/sensing_thread_x/STM32U5/README.md) project running the inference running on the board:
+After successful connection perform a reset using [RESET] button on the board. This will reset the board and start running the inference of the AI model on the board using real-time data from the digital microphone. Following figure shows a screenshot of [stm32ai application code](../../application_code/sensing/STM32U5/README.md) project running the inference running on the board:
 
 
 ![plot](./img/getting_started_running.png)
 
 
-Please note that the output display may look slightly different depending on whether you are using the free_rtos or threadx version of the C application.
+Please note that the output display may look slightly different depending on the C application used.
 
-**If nothing is displayed on the serial output after flashing and resetting the board, MAKE SURE you set the correct baud rate in your serial connection as described above.**
+**If nothing is displayed on the serial output after flashing and resetting the board, make sure you set the correct baud rate in your serial connection as described above.**
 
 Each of the line in the Tera Term terminal shows the output of one inference from the live data.
 Inference is run once each second.
@@ -333,7 +339,7 @@ The labels `"signal"` shows the signal index or number, the `"class"` has the la
 </details>
 <details open><summary><a href="#6"><b>6. Restrictions</b></a></summary><a id="6"></a>
 
-- In this version, application code for deployment is only supported on the [B-U585I-IOT02A](https://www.st.com/en/evaluation-tools/steval-stwinkt1b.html), and [STM32N6570-DK] boards.
+- In this version, application code for deployment is only supported on the [B-U585I-IOT02A](https://www.st.com/en/evaluation-tools/steval-stwinkt1b.html), and [STM32N6570-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html) boards.
 - Only the *int8* type input is supported for the quantization operation.
 
 </details>

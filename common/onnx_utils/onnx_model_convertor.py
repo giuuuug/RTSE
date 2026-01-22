@@ -10,11 +10,17 @@ import argparse
 from pathlib import Path
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+from copy import deepcopy
 import tf2onnx
 import tensorflow as tf
-import onnx as onx
-import onnxruntime as onx_rt
+import onnx
+import onnxruntime as onnx_rt
 import numpy as np
+from .tf2onnx_lib import patch_tf2onnx
+import torch
+from omegaconf import DictConfig
+from common.model_utils.tf_model_loader import load_model_from_path
+from common.onnx_utils.ssd_onnx_export import SSDExportWrapper
 
 def _quantized_per_tensor(model_path):
     """
@@ -73,8 +79,8 @@ def _tool_version_used():
     _tool_version_used()  # Call the function to print the versions of the libraries
     """
     print('The version of libraries are: ')
-    print(f'onnx: {onx.__version__}')
-    print(f'onnxruntime: {onx_rt.__version__}')
+    print(f'onnx: {onnx.__version__}')
+    print(f'onnxruntime: {onnx_rt.__version__}')
     print(f'tensorflow: {tf.__version__}')
 
 
@@ -112,17 +118,18 @@ def onnx_model_converter(input_model_path: str, target_opset: int = 17, output_d
     model_type = Path(input_model_path).suffix
     if model_type == '.onnx':
         print('Model is already in onnx format')
-    elif model_type == '.h5':
+    elif model_type in ['.h5','.keras']:
         h5_model = tf.keras.models.load_model(input_model_path, compile = False)
         # Get the input tensor name
-        input_names = h5_model.input_names
-        output_names = h5_model.output_names
+        input_names = [e.name for e in h5_model.inputs]
+        output_names = list(h5_model.output_names)
         
         if input_channels_last:
             inputs_as_nchw = None
         else:
             inputs_as_nchw = input_names
 
+        patch_tf2onnx()  # TODO: Remove this once `tf2onnx` supports numpy 2.
         if static_input_shape:
             spec = (tf.TensorSpec(static_input_shape, tf.float32, name=input_names[0]),)
             tf2onnx.convert.from_keras(h5_model,
@@ -140,19 +147,78 @@ def onnx_model_converter(input_model_path: str, target_opset: int = 17, output_d
     elif model_type == '.tflite':
         import tflite2onnx
         if _quantized_per_tensor(input_model_path):
-            onnx_file_name = ".".join(os.path.basename(input_model_path).split(".")[:-1])
-            tflite2onnx.convert(input_model_path, f"{onnx_file_name}.onnx")
+#            onnx_file_name = ".".join(os.path.basename(input_model_path).split(".")[:-1])
+#            tflite2onnx.convert(input_model_path, f"{onnx_file_name}.onnx")
+            tflite2onnx.convert(input_model_path, output_dir)
         else:
             raise TypeError('Only tflite models quantized using per-tensor can be converted')
     else:
-        raise TypeError("Provide a valid type of model, only supported types are `.h5`, and `.tflite`")
+        raise TypeError("Provide a valid type of model, only supported types are `.keras`, `.h5`, and `.tflite`")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Example script that accepts two arguments.')
-    parser.add_argument('--model', help='The path to the input model')
-    parser.add_argument('--opset', help='The target opset: default value is 17', default=17)
-    parser.add_argument('--output_dir', help='the output dir')
-    parser.add_argument('--static_input_shape', help="Static input shape for ONNX model", default=None)
-    args = parser.parse_args()
-    _tool_version_used()
-    onnx_model_converter(args.model, args.opset, args.output_dir)
+
+def torch_model_export_static(cfg: DictConfig, 
+                              model_dir: str, 
+                              model: object,
+                              opset_version: int = 20) -> onnx.ModelProto:
+    """
+    Exports a PyTorch model to ONNX format with static input shapes.
+
+    Args:
+        cfg (DictConfig): Configuration object containing model settings.
+        model_dir (str): Directory where the ONNX model will be saved.
+        model (object): The PyTorch model to export.
+        opset_version (int): ONNX opset version to use (default is 20).
+
+    Returns:
+        onnx.ModelProto: The exported ONNX model.
+    """
+    # Set the model to evaluation mode
+    
+    if 'ssd' in cfg.model.model_name : 
+        model_back = deepcopy(model)
+        model=model.to("cpu")
+        model.priors = model.priors.to("cpu")
+        model=SSDExportWrapper(model)
+    
+    if 'yolod' in cfg.model.model_name : 
+        model.head.decode_in_inference = False
+
+    model.eval()
+
+    # Create a dummy input tensor with the specified input shape from the configuration
+    # Need 4d for torch
+    dummy_input = torch.randn((1, *cfg.model.input_shape))
+
+    # Define the path to save the ONNX model
+    onnx_model_path = Path(model_dir, cfg.model.model_name, cfg.model.model_name+".onnx")
+    onnx_model_path.parent.mkdir(exist_ok=True)
+
+    # Export the PyTorch model to ONNX format
+    torch.onnx.export(
+        model,
+        dummy_input,
+        onnx_model_path,
+        export_params=True, # Store trained parameters in the model file
+        opset_version=opset_version,   # ONNX opset version to use
+        do_constant_folding=True,   # Optimize constant expressions
+        input_names=["input"],
+        output_names=["output"],
+        dynamic_axes={      # Specify dynamic axes for batch size
+            "input": {0: "batch_size"},
+            "output": {0: "batch_size"}
+        }
+    )
+    
+    if 'ssd' in cfg.model.model_name : 
+        model = deepcopy(model_back)
+    
+    # Load the exported ONNX model from the saved path
+    onnx_model = load_model_from_path(cfg, onnx_model_path)
+    setattr(onnx_model, 'model_path', onnx_model_path)
+    
+    # Update the configuration with the path to the ONNX model
+    cfg.model.model_path = onnx_model_path
+
+    # Return the loaded ONNX model
+    return onnx_model
+        

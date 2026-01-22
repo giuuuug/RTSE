@@ -47,17 +47,17 @@ __Note__: Camera detected automatically by the firmware, no config required.
 
 To deploy your model, you need to fill a YAML configuration file with your tools and model info, and then launch `stm32ai_main.py`.
 
-As an example, we will show how to deploy [st_movenet_lightning_heatmaps_192_int8_pc.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/pose_estimation/movenet/ST_pretrainedmodel_public_dataset/custom_dataset_person_13kpts/st_movenet_lightning_heatmaps_192) pre-trained on the person 13kpts dataset using the necessary parameters provided in [st_movenet_lightning_heatmaps_192_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/pose_estimation/movenet/ST_pretrainedmodel_public_dataset/custom_dataset_person_13kpts/st_movenet_lightning_heatmaps_192/st_movenet_lightning_heatmaps_192_config.yaml). To get this model, clone the [ModelZoo repo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) in the same folder you cloned the [STM32 ModelZoo services repo](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/).
+As an example, we will show how to deploy [st_movenet_lightning_a100_heatmaps_192_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite) pre-trained on the a person 17kpts custom ST dataset using the necessary parameters provided in [st_movenet_lightning_a100_heatmaps_192_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/pose_estimation/movenet/ST_pretrainedmodel_public_dataset/custom_dataset_person_13kpts/st_movenet_lightning_heatmaps_192/st_movenet_lightning_heatmaps_192_config.yaml). To get this model, clone the [ModelZoo repo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) in the same folder you cloned the [STM32 ModelZoo services repo](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/).
 
-To configure the deployment, edit [`../src/config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../src/config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml).
+To configure the deployment, edit [`../config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml).
 
 ### 2.1 Setting the model and the operation Mode
 
 ```yaml
-general:
+model:
   model_type: heatmaps_spe # heatmaps_spe, yolo_mpe
   # path to a `.tflite` or `.onnx` file.
-  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_public_dataset/custom_dataset_person_13kpts/st_movenet_lightning_heatmaps_192/st_movenet_lightning_heatmaps_192_int8_pc.tflite
+  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite
 ```
 
 Configure the __operation_mode__ section as follow:
@@ -74,9 +74,15 @@ Configure the __dataset__ section in the YAML file as follows:
 
 ```yaml
 dataset:
-  name: person_13kpts
-  keypoints: 13
+  dataset_name: coco
+  class_names: [person]
+  keypoints: 17
 ```
+
+> [!IMPORTANT]
+> In 'dataset' section, the `dataset_name` is mandatory and should always be set to 'coco' even if you dont use the COCO dataset
+
+The `class_names` and `keypoints` attributes are mandatory to correctly print the colors and connections between the keypoints extracted from the [dictionnary](../tf/src/utils/connections.py). For more info check out [this doc](./README_MODELS.md)
 
 #### 2.2.2 Preprocessing info
 
@@ -126,7 +132,6 @@ These steps will be done automatically by configuring the __tools__ and __deploy
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -143,7 +148,6 @@ deployment:
 ```
 
 - `tools/stedgeai`
-  - `version` Specify the __STM32Cube.AI__ version used to benchmark the model, e.g. __10.0.0__.
   - `optimization` *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
   - `on_cloud` *Boolean*, True/False.
   - `path_to_stedgeai` *Path* to stedgeai executable file to use local download, else __False__.
@@ -198,10 +202,10 @@ __Warning__: using USB-A to USB-C cable may not work because of possible lack of
 
 __3.__ Set to [dev mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
 
-__4.__ Once [`deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../src/config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml) filled, launch:
+__4.__ Once [`deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml) filled, launch:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_n6_st_movenet_lightning_heatmaps_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_n6_st_movenet_lightning_heatmaps_config.yaml
 ```
 
 __5.__ Once the application deployment complete, set to [boot from flash mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
@@ -225,10 +229,10 @@ __Warning__: using USB-A to USB-C cable may not work because of possible lack of
 
 __3.__ Set to [dev mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
 
-__4.__ Once [`deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../src/config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml) filled, launch:
+__4.__ Once [`deployment_n6_st_movenet_lightning_heatmaps_config.yaml`](../config_file_examples/deployment_n6_st_movenet_lightning_heatmaps_config.yaml) filled, launch:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_n6_st_movenet_lightning_heatmaps_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_n6_st_movenet_lightning_heatmaps_config.yaml
 ```
 
 __5.__ Once the application deployment complete, set to [boot from flash mode](#30-boot-modes) and disconnect/reconnect the power cable of your board.
@@ -241,8 +245,8 @@ __6.__ When the application is running on the *NUCLEO-N657X0-Q* board, the LCD d
 - The keypoints
 
 __Note__:
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_n6_config.yaml](../src/config_file_examples/chain_qd_n6_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_n6_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```

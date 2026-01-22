@@ -1,19 +1,19 @@
 # How can I finetune a ST Model Zoo model on my own dataset?
 
-With ST Model Zoo, you can easily pick an already pretrained model and finetune it on your own dataset.
+With ST Model Zoo, you can easily pick an already pretrained model and finetune it on your own dataset. In this readme, we explain how to do it with Tensorflow.
 
 ## Pick a pretrained model
 
 A choice of model architectures pretrained on multiple datasets can be found [here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/image_classification).
-Find the model you would like to based on it's input size and performances on various benchmarks. 
+For the model you would like to based on, you can find it's input size and performances on various benchmarks. 
 
 ## Operation modes:
 
 Depending on what you want to do, you can use the operation modes below:
 - Training:
-    - To simply train the model on my data and get as output the trained tensorflow model (.h5).
+    - To simply train the model on my data and get as output the trained tensorflow model (.keras).
 - Chain_tqe:
-    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.h5 and .tflite)
+    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.keras and .tflite)
 - Chain_tqeb:
     - To train, quantize, evaluate and benchmark the quantized model in one go.
 
@@ -26,8 +26,8 @@ For any details regarding the parameters of the config file or the data augmenta
 
 ## Finetune the model on my dataset
 
-As usual, to retrain the model we edit the user_config.yaml and the stm32ai_main.py python script (both found in /src).
-In this example, we retrain the mobilenet_v2 model with an input size of (224x224x3) pretrained on a large public dataset imagenet, with our data.
+As usual, to retrain the model we edit the user_config.yaml and the stm32ai_main.py python script.
+In this example, we retrain the mobilenetv2 model with an input size of (224x224x3) pretrained on a large public dataset imagenet, with our data.
 In our case, our dataset contrains butterflies species images: [Dataset](https://www.kaggle.com/datasets/gpiosenka/butterfly-images40-species)
 
 The most important parts here are to define:
@@ -48,10 +48,15 @@ general:
   global_seed: 127
   gpu_memory_limit: 3
 
+model:
+  model_name: mobilenetv2_a035 # Select our model architecture
+  pretrained: True # pretrain on imagenet dataset
+  input_shape: (224, 224, 3) # input size  
+
 operation_mode: training
 
 dataset:
-  name: butterflies
+  dataset_name: butterflies
   # Define the classes you want to detect, in this example, just the first 5
   # So my model output is of size 5
   class_names: ['ADONIS', 'AFRICAN GIANT SWALLOWTAIL', 'AMERICAN SNOOT', 'AN 88', 'APPOLLO'] 
@@ -89,12 +94,6 @@ data_augmentation:
 
 # training parameters
 training:
-  model:
-    name: mobilenet # Select our model architecture
-    version: v2 # we also have mobilenetv1
-    alpha: 0.35
-    pretrained_weights: imagenet # pretrain on imagenet dataset
-    input_shape: (224, 224, 3) # input size
   # all the parameters below are standard in machine learning, you can look for them in google
   # they mostly depends on the topology of your model and will need a lot of testing
   batch_size: 64
@@ -102,29 +101,29 @@ training:
   dropout: 0.3
   optimizer:
     Adam:
-        learning_rate: 0.001
+      learning_rate: 0.001
   callbacks:
     ReduceLROnPlateau:
-        monitor: val_accuracy
-        factor: 0.5
-        patience: 10
+      monitor: val_accuracy
+      factor: 0.5
+      patience: 10
     EarlyStopping:
-        monitor: val_accuracy
-        patience: 40
+      monitor: val_accuracy
+      patience: 40
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 
 For the Chain_tqe and Chain_tqeb operation modes, you need to edit the config file to add part related to the quantization and benchmark.
 Look at the documentation linked above for more details.
 
-You can also find examples of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/image_classification/src/config_file_examples)
+You can also find examples of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/image_classification/config_file_examples)
 
 ## Run the script:
 

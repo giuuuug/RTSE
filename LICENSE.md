@@ -3,6 +3,7 @@
 "common" and "tutorial" folder license schemes:
 | Component                            | License              | Copyright |
 |:---------                            |:-------              |:----------|
+| api                                  | [Apache License 2.0](./api/LICENSE.md) | STMicroelectronics |
 | common                               | [Apache License 2.0](./common/LICENSE.md) | STMicroelectronics |
 | tutorial                             | [Apache License 2.0](./tutorials/LICENSE.md)                 | STMicroelectronics |
 
@@ -18,15 +19,23 @@ Software BOM for STM32 use cases:
 * [human_activity_recognition](./human_activity_recognition/LICENSE.md)
 * [depth_estimation](./depth_estimation/LICENSE.md)
 * [neural_style_transfer](./neural_style_transfer/LICENSE.md)
-
+* [re_identification](./re_identification/LICENSE.md)
+* [face_detection](./face_detection/LICENSE.md)
+* [arc_fault_detection](./arc_fault_detection/LICENSE.md)
 
 Software BOM for STM32 application codes:
-* [image_classification](./application_code/image_classification/STM32H7/LICENSE.md)
-* [object_detection](./application_code/object_detection/STM32H7/LICENSE.md)
-* [sensing_free_rtos](./application_code/sensing_free_rtos/STM32U5/LICENSE.md)
-* [sensing_thread_x](./application_code/sensing_thread_x/STM32U5/LICENSE.md)
+* [audio](./application_code/audio/STM32N6/LICENSE.md)
+* [face_detection](./application_code/face_detection/STM32N6/LICENSE.md)
 * [hand_posture](./application_code/hand_posture/STM32F4/LICENSE.md)
-
+* [image_classification](./application_code/image_classification/STM32H7/LICENSE.md)
+* [image_classification](./application_code/image_classification/STM32N6/LICENSE.md)
+* [instance_segmentation](./application_code/instance_segmentation/STM32N6/LICENSE.md)
+* [object_detection](./application_code/object_detection/STM32H7/LICENSE.md)
+* [object_detection](./application_code/object_detection/STM32N6/LICENSE.md)
+* [pose_estimation](./application_code/pose_estimation/STM32N6/LICENSE.md)
+* [re_identification](./application_code/re_identification/STM32N6/LICENSE.md)
+* [semantic_segmentation](./application_code/semantic_segmentation/STM32N6/LICENSE.md)
+* [sensing](./application_code/sensing/STM32U5/LICENSE.md)
 
 X-LINUX-AI application codes license schemes:
 | Component                            | License                                                                      | Copyright |

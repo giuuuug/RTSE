@@ -1,14 +1,14 @@
 # How can I quickly benchmark my model using the ST Model Zoo?
 
-With ST Model Zoo, you can easily evaluate the memory footprints and inference time of a model on multiple hardwares using the [ST Edge AI Development Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
+With ST Model Zoo, you can easily evaluate the memory footprints and inference time of a model on multiple hardwares using the [STEdgeAI Development Cloud](https://stm32ai.st.com/st-edge-ai-developer-cloud/)
 
 ## Operation modes:
 
 Depending on the model format you have, you can use the operation modes below:
-- Benchmarking:
+- benchmarking:
     - To benchmark a quantized model (.tflite or QDQ onnx)
-- Chain_qb:
-    - To quantize and benchmark a float model (.h5 or .onnx) in one pass
+- chain_qb:
+    - To quantize and benchmark a float model (.keras or .onnx) in one pass
 <div align="left" style="width:100%; margin: auto;">
 
 ![image.png](../img/chain_qb.png)
@@ -38,9 +38,9 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml 
 
-general:
-   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/movenet_lightning_heatmaps_192_int8_pc.tflite
-   model_type: heatmaps_spe  # spe, yolo_mpe
+model:
+   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite
+   model_type: heatmaps_spe
 
 operation_mode: benchmarking
 
@@ -55,7 +55,6 @@ preprocessing:
 
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -65,11 +64,11 @@ benchmarking:
    board: STM32H747I-DISCO
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
@@ -78,8 +77,8 @@ Here is another example where we quantize the model first, then we launch the be
 ```yaml
 # user_config.yaml 
 
-general:
-   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/movenet_lightning_heatmaps_192.h5
+model:
+   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192.keras
    model_type: heatmaps_spe
 
 operation_mode: chain_qb
@@ -104,7 +103,6 @@ quantization:
 
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -114,17 +112,17 @@ benchmarking: # valid options are STM32MP257F-EV1,STM32MP157F-DK2,STM32MP135F-DK
    board: STM32MP257F-EV1
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
 Here the quantization is made with random data as no data were provided and main goal was to have a quick insight on the performances of a quantized model for a specific HW. When evaluating the model, it is highly recommended to use real data for the quantization of course.
 
-You can also find examples of user_config.yaml for any operation modes [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation modes [here](../../config_file_examples)
 
 
 ## Run the script:
@@ -141,11 +139,11 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Local benchmarking:
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI Core functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) just download it locally.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 

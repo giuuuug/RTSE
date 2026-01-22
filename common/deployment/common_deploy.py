@@ -17,7 +17,6 @@ from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 import tensorflow as tf
 import shutil
-from hydra.core.hydra_config import HydraConfig
 from typing import Optional
 from pathlib import Path
 
@@ -30,6 +29,65 @@ import json
 import re
 from typing import Dict, List
 
+def check_submodule(c_project_path: str):
+    """
+    Check if the project submodule is initialized in the C project path.
+
+    Args:
+        c_project_path (str): Path to the  C project.
+    """
+    BOLD_YELLOW = "\033[1;33m"
+    BOLD_RED = "\033[1;31m"
+    RESET = "\033[0m"
+    from git import Repo, InvalidGitRepositoryError
+
+    # Get absolute path of the current script file
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Initialize the git repo by searching parent directories from the script directory
+    try:
+        repo = Repo(script_dir, search_parent_directories=True)
+    except InvalidGitRepositoryError:
+        raise InvalidGitRepositoryError(f"No git repository found from path {script_dir}")
+
+    submodule_path = c_project_path.lstrip('./').rstrip("./")
+
+    # Find the submodule object by path
+    submodule = None
+    for sm in repo.submodules:
+        print(sm.path)
+        if sm.path == submodule_path:
+            submodule = sm
+            break
+
+    if submodule is None:
+        raise ValueError(f"Submodule '{submodule_path}' not found.")
+
+    # Check if submodule is initialized by trying to get its repo
+    try:
+        sub_repo = submodule.module()
+        initialized = True
+    except InvalidGitRepositoryError:
+        print(f"{RESET}{BOLD_RED}[ERROR]:{RESET} Submodule '{submodule_path}' is not initialized. Please run 'git submodule update --init {submodule_path}'.")
+        initialized = False
+        sub_repo = None
+        return False
+
+    if initialized:
+        # Commit recorded in main repo
+        main_commit = submodule.hexsha
+
+        # Current commit in submodule repo
+        current_commit = sub_repo.head.commit.hexsha
+        if main_commit != current_commit:
+            print(f"{RESET}{BOLD_RED}[ERROR]:{RESET} Submodule '{submodule_path}' is not at the expected commit.")
+            print(f"         Main repo expects commit {main_commit} but submodule is at commit {current_commit}.")
+            print(f"         Please run 'git submodule update --init {submodule_path}' to sync the submodule.")
+            return False
+        if sub_repo.is_dirty(untracked_files=True):
+            print(f"{RESET}{BOLD_YELLOW}[WARNING]:{RESET} Submodule '{submodule_path}' has uncommitted changes. Please commit or stash them.")
+            return True
+    return True
 
 def _keep_internal_weights(path_network_data_params: str):
     with open(path_network_data_params,'r') as f1,\
@@ -101,7 +159,7 @@ def _dispatch_weights(internalFlashSizeFlash_KB: str,
 
 def stm32ai_deploy(target: bool = False,
                    stlink_serial_number: str = None,
-                   stm32ai_version: str = None,
+                   stedgeai_core_version: str = None,
                    c_project_path: str = None,
                    output_dir: str = None,
                    stm32ai_output: str = None,
@@ -126,7 +184,7 @@ def stm32ai_deploy(target: bool = False,
 
     Args:
         target (bool): Whether to generate the STM32Cube.AI library and header files on the target device. Defaults to False.
-        stm32ai_version (str): Version of the STM32Cube.AI backend to use.
+        stedgeai_core_version (str): Version of the STEdgeAI Core to use.
         c_project_path (str): Path to the STM32CubeIDE C project.
         output_dir (str): Path to the output directory.
         stm32ai_output (str: Path to the STM32Cube.AI output directory. Defaults to None.
@@ -183,7 +241,7 @@ def stm32ai_deploy(target: bool = False,
             # Get footprints of the given model
             benchmark_model(optimization=optimization, model_path=model_path,
                             path_to_stm32ai=path_to_stm32ai, stm32ai_output=stm32ai_output,
-                            stm32ai_version=stm32ai_version, get_model_name_output=get_model_name_output)
+                            stedgeai_core_version=stedgeai_core_version, get_model_name_output=get_model_name_output)
             with open(os.path.join(stm32ai_output, 'network_c_info.json'), 'r') as f:
                 report = json.load(f)
 
@@ -232,7 +290,7 @@ def stm32ai_deploy(target: bool = False,
 
             path_network_c_info = os.path.join(session.workspace, "network_c_info.json")
 
-            update_activation_c_code(c_project_path, path_network_c_info=path_network_c_info, available_AXIRAM=available_default_ram, cfg=cfg, custom_objects=custom_objects)
+            update_activation_c_code(c_project_path, model_path=model_path, path_network_c_info=path_network_c_info, available_AXIRAM=available_default_ram, aspect_ratio=aspect_ratio, custom_objects=custom_objects)
 
             if split_weights:
                 print("[INFO] : Dispatch weights between internal and external flash to fit the large model")
@@ -242,13 +300,13 @@ def stm32ai_deploy(target: bool = False,
                                  kernelFlash_KB=board.config.lib_size,
                                  applicationSizeFlash_KB=board.config.application_size,
                                  path_network_c_info=path_network_c_info,
-                                 path_network_data_params=os.path.join(session.generated_dir, "network_data_params.c"))
+                                 path_network_data_params=os.path.join(session.generated_dir, "network_data.c"))
             else:
                 print("[INFO] : Weights fit in internal flash")
 
                 # @Todo check if fits as well in external and not too large for external as well
                 _keep_internal_weights(
-                                 path_network_data_params=os.path.join(session.generated_dir, "network_data_params.c"))
+                                 path_network_data_params=os.path.join(session.generated_dir, "network_data.c"))
 
 
     # Add environment variables
@@ -271,10 +329,17 @@ def stm32ai_deploy(target: bool = False,
 
     # 3 - compile the model
     user_files = []
+    # Wrap the following in a try/except block for use cases which either don't pass cfg as argument
+    # Or UCs which don't have a preprocessing.resizing.aspect_ratio in config.
+    # Temporary band-aid fix
+    try:
+        aspect_ratio=cfg.preprocessing.resizing.aspect_ratio
+    except:
+        pass
     print("[INFO] : Compiling the model and generating optimized C code + Lib/Inc files: ", model_path, flush=True)
     if on_cloud:
         # Connect to STM32Cube.AI Developer Cloud
-        login_success, ai, _ = cloud_connect(stm32ai_version=stm32ai_version, credentials=credentials)
+        login_success, ai, _ = cloud_connect(stedgeai_core_version=stedgeai_core_version, credentials=credentials)
         if login_success:
             # Generate the model C code and library
             if not check_large_model:
@@ -321,7 +386,7 @@ def stm32ai_deploy(target: bool = False,
                 path_network_c_info = os.path.join(session.generated_dir, "network_c_info.json")
 
                 # update activations buffers in case it has been modified in former deploy
-                update_activation_c_code(c_project_path, path_network_c_info=path_network_c_info, available_AXIRAM=available_default_ram, cfg=cfg, custom_objects=custom_objects)
+                update_activation_c_code(c_project_path, model_path=model_path, path_network_c_info=path_network_c_info, available_AXIRAM=available_default_ram, aspect_ratio=aspect_ratio, custom_objects=custom_objects)
 
                 if split_weights:
                     # @Todo check if fits as well in external and not too large for external as well
@@ -329,13 +394,13 @@ def stm32ai_deploy(target: bool = False,
                                     kernelFlash_KB=board.config.lib_size,
                                     applicationSizeFlash_KB="10KB",
                                     path_network_c_info=path_network_c_info,
-                                    path_network_data_params=os.path.join(stm32ai_output, "network_data_params.c"))
+                                    path_network_data_params=os.path.join(stm32ai_output, "network_data.c"))
                 else:
                     print("[INFO] : Weights fit in internal flash")
 
                     # @Todo check if fits as well in external and not too large for external as well
                     _keep_internal_weights(
-                                    path_network_data_params=os.path.join(session.generated_dir, "network_data_params.c"))
+                                    path_network_data_params=os.path.join(session.generated_dir, "network_data.c"))
 
             if os.path.exists(stm32ai_output):
                 # Move the existing STM32Cube.AI output directory to the output directory
@@ -366,7 +431,7 @@ def stm32ai_deploy(target: bool = False,
 
 def stm32ai_deploy_stm32n6(target: bool = False,
                    stlink_serial_number: str = None,
-                   stm32ai_version: str = None,
+                   stedgeai_core_version: str = None,
                    c_project_path: str = None,
                    output_dir: str = None,
                    stm32ai_output: str = None,
@@ -390,7 +455,10 @@ def stm32ai_deploy_stm32n6(target: bool = False,
                    input_data_type: str = '',
                    output_data_type: str = '',
                    inputs_ch_position: str = '',
-                   outputs_ch_position: str = '') -> None:
+                   outputs_ch_position: str = '',
+                   name: str = 'network',
+                   no_inputs_allocation: bool = False,
+                   no_outputs_allocation: bool = False) -> None:
     """
     Deploy an STM32 AI model to a target device.
 
@@ -429,7 +497,8 @@ def stm32ai_deploy_stm32n6(target: bool = False,
         # Set the compiler options
         neural_art_path = session._board_config.config.profile + "@" + session._board_config.config.neuralart_user_path
         opt = stmaic.STMAiCompileOptions(st_neural_art=neural_art_path, input_data_type=input_data_type, inputs_ch_position=inputs_ch_position,
-                                         output_data_type = output_data_type, outputs_ch_position = outputs_ch_position)
+                                         output_data_type = output_data_type, outputs_ch_position = outputs_ch_position,
+                                         name=name, no_outputs_allocation=no_outputs_allocation, no_inputs_allocation=no_inputs_allocation)
 
         # 2 - set the board configuration
         board_conf = os.path.join(c_project_path, stmaic_conf_filename)
@@ -448,6 +517,10 @@ def stm32ai_deploy_stm32n6(target: bool = False,
     elif verbosity is not None:
         stmaic.set_log_level('info')
 
+    ret = check_submodule(c_project_path)
+    if not ret:
+        sys.exit(1)
+
     # 1 - create a session
     session = stmaic.load(model_path, workspace_dir=output_dir)
 
@@ -462,7 +535,7 @@ def stm32ai_deploy_stm32n6(target: bool = False,
 
     if on_cloud:
         # Connect to STM32Cube.AI Developer Cloud
-        login_success, ai, _ = cloud_connect(stm32ai_version=stm32ai_version, credentials=credentials)
+        login_success, ai, _ = cloud_connect(stedgeai_core_version=stedgeai_core_version, credentials=credentials)
 
         if login_success:
 

@@ -271,13 +271,35 @@ def _programm_dev_board(config, series:str="", serial_number=None):
             logger.warning(msg_)
             _connected_boards(st_links)
 
+            # """ Get approval to flash to the connected board"""
+            # if len(st_links) == 1:
+            #     if sys.stdin.isatty():
+            #         msg_ = f'Do you confirm you want to flash the {st_links[0]["board"]} board? yes/no: '
+            #         flash_anyway = input(msg_)
+            #     else:
+            #         flash_anyway = sys.stdin.readline().rstrip()
+            #     if flash_anyway.lower() in ["yes", "y"]:
+            #         found = st_link['sn']
+            #         logger.warning("You can add your board in the section board in the stmaic_*.conf you're deploying to skip prompt")
+            #     else:
+            #         found = None
+            #         return 1
+            # # """ Choose one of the connected board"""
+            # else:
+            #     if sys.stdin.isatty():
+            #         msg_ = f'Do you want to flash one of the board? Enter the board id or False: '
+            #         index_board = input(msg_)
+            #     else:
+            #         index_board = sys.stdin.readline().rstrip()
+            #     if index_board.isnumeric():
+            #         found = st_links[int(index_board)]['sn']
+            #         logger.warning("You can add your board in the section board in the stmaic_*.conf you're deploying to skip prompt")
+            #     else:
+            #         found = None
+            #         return 1
             """ Get approval to flash to the connected board"""
             if len(st_links) == 1:
-                if sys.stdin.isatty():
-                    msg_ = f'Do you confirm you want to flash the {st_links[0]["board"]} board? yes/no: '
-                    flash_anyway = input(msg_)
-                else:
-                    flash_anyway = sys.stdin.readline().rstrip()
+                flash_anyway = sys.stdin.readline().rstrip()
                 if flash_anyway.lower() in ["yes", "y"]:
                     found = st_link['sn']
                     logger.warning("You can add your board in the section board in the stmaic_*.conf you're deploying to skip prompt")
@@ -286,18 +308,14 @@ def _programm_dev_board(config, series:str="", serial_number=None):
                     return 1
             # """ Choose one of the connected board"""
             else:
-                if sys.stdin.isatty():
-                    msg_ = f'Do you want to flash one of the board? Enter the board id or False: '
-                    index_board = input(msg_)
-                else:
-                    index_board = sys.stdin.readline().rstrip()
+                index_board = sys.stdin.readline().rstrip()
                 if index_board.isnumeric():
                     found = st_links[int(index_board)]['sn']
                     logger.warning("You can add your board in the section board in the stmaic_*.conf you're deploying to skip prompt")
                 else:
                     found = None
                     return 1
-
+                
         serial_number = found if not serial_number else serial_number
         if len(st_links) > 1 and not serial_number:
             logger.warning(warning_msg)

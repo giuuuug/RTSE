@@ -1,18 +1,20 @@
 general:
   project_name: handposture
-  model_path:
   logs_dir: logs
   saved_models_dir: saved_models
   display_figures: True
   global_seed: 42
   gpu_memory_limit: 24
-  deterministic_ops: True
 
 operation_mode: training
 #choices=['training' , 'evaluation', 'deployment', 'benchmarking']
 
+model:    # Use it if you want to use a model from the zoo, mutually exclusive with 'model.model_path'
+  model_name: st_cnn2d_handposture # custom
+  input_shape: (8, 8, 2)
+
 dataset:
-  name: ST_handposture_dataset
+  dataset_name: ST_handposture_dataset
   class_names: [None, Like, Dislike, FlatHand, Fist, Love, BreakTime, CrossHands] # Mandatory and aligned with utils/handposture_dictionnary.py
   training_path: ./datasets/ST_VL53L8CX_handposture_dataset  # Mandatory
   validation_path:    # Optional
@@ -29,10 +31,6 @@ data_augmentation:    # Optional section
     mode: horizontal # horizontal, vertical or horizontal_and_vertical
 
 training:
-  model:    # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: CNN2D_ST_HandPosture # custom
-    version: v1
-    input_shape: (8, 8, 2)
   frozen_layers: #(0:-1)            # Optional, use if you want to freeze some layers (by default all layers are trainable)
   dropout: 0.2                     # Optional, use it if you want a dropout layer to be included in the model
   batch_size: 32
@@ -50,11 +48,9 @@ training:
       monitor: val_accuracy
       restore_best_weights: true
       patience: 40
-#  trained_model_path: trained.h5   # Optional, use it if you want to save the best model at the end of the training to a path of your choice
 
 tools:
   stedgeai:
-    version: 10.2.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -72,8 +68,8 @@ deployment:
     board: NUCLEO-F401RE
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}

@@ -70,3 +70,7 @@ class PrepareNetworkError(RelocError):
 class ParserNetworkError(RelocError):
     """Parser C-file error"""
     idx = 5
+    
+class ParserJsonError(RelocError):
+    """Parser C-file error"""
+    idx = 6

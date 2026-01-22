@@ -1,10 +1,12 @@
 # <a id="">Human Activity Recognition (HAR) STM32 model training</a>
 
 This readme shows how to train an HAR model from scratch or use transfer learning for training a model using a public (WISDM) or custom (mobility_v1) dataset. The scripts have two different choices for the model architecture based on convolutional neural networks (CNN) namely:
-- [Ignatov (IGN)](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/ign/README.md) 
-- [Global Max Pooling (GMP)](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/gmp/README.md)
+- [Ignatov (st_ign)](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/st_ign/README.md) 
+- [Global Max Pooling (st_gmp)](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/st_gmp/README.md)
 
-In this article, details for training the IGN model using [WISDM](https://www.cis.fordham.edu/wisdm/dataset.php) (a public dataset) are provided.
+NOTE: The prefix `st_` denotes that these are the modified architectures that we created from the original GMP and IGN.
+
+In this article, details for training the `st_ign` model using [WISDM](https://www.cis.fordham.edu/wisdm/dataset.php) (a public dataset) are provided.
 
 <details open><summary><a href="#1"><b>1. Prepare the dataset</b></a></summary><a id="1"></a>
 
@@ -72,11 +74,12 @@ All the proposed services like the `training`, `evaluation` etc. of the model ar
 
 For training, the configuration file should include at least the following sections:
 
-- `general`, describes your project, including project name, directory where to save models, etc.
-- `operation_mode`, describes the service or chained services to be used
-- `dataset`, describes the dataset you are using, including directory paths, class names, etc.
-- `preprocessing`, specifies the methods you want to use for preprocessing. 
-- `training`, specifies your training setup, including batch size, number of epochs, optimizer, callbacks, etc.
+- `general`, describes your project, a flag to control if the plotted figures are to be displayed, max gpu memory allocation etc.
+- `operation_mode`, describes the service (like "training", "evaluation", "benchmarking", etc.) or chained services to be used
+- `dataset`, describes the dataset you are using, including dataset name, paths, class names, etc.
+- `preprocessing`, specifies the preprocessing. 
+- `model`, specifies the model to be used, including model name, input shape, etc.
+- `training`, specifies your training setup, including batch size, number of epochs, optimizer, and callbacks, etc.
 - `mlflow`, specifies the folder to save MLFlow logs.
 - `hydra`, specifies the folder to save Hydra logs.
 
@@ -98,7 +101,7 @@ general:
   gpu_memory_limit: 24
   deterministic_ops: True 
 ```
-- `project_name`: is used for storing the experiments in the `mlflow` a tool to track the results of different experiments.
+- `project_name`: is used for creating a project and storing the experiments in the `mlflow` a tool to track the results of different experiments.
 - `logs_dir`: is the directory of the run that will hold all the logs created during the experiment.
 - `saved_models_dir`: holds the trained model
 - `display_figures`: a boolean flag to choose if at the end of the experiment the figures generated are opened or not. This will include the figures of the training_history, confusion_matrix etc.
@@ -119,19 +122,19 @@ Information about the dataset that you want to use, (path to it, the classes ava
 
 ```yaml
 dataset:
-  name: wisdm
-  class_names: [Jogging, Stationary, Stairs, Walking]
-  training_path: ../datasets/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt
+  dataset_name: wisdm  # wisdm or mobility_v1
+  class_names: [Jogging,Stationary,Stairs,Walking]  # [Stationary,Walking,Jogging,Biking] for mobility_v1
+  training_path: ./datasets/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt # need paths to train.pkl for mobility_v1
   validation_split: 0.2
+  test_path: # need paths to test.pkl for mobility_v1
   test_split: 0.25
-  seed: 123
 ```
-- `name`: name of the dataset, `wisdm`
+- `dataset_name`: name of the dataset, `wisdm`
 - `class_names`: labels of the classes [Jogging, Stationary, Stairs, Walking] in the case of `wisdm`
 - `training_path`: path to `WISDM_ar_v1.1_raw.txt` file for `wisdm` and to train.pkl for `mobility_v1`
 - `validation_split`: (float between 0-1), portion of training data to be used for the validation
 - `test_split`: (float between 0-1) portion of the total data to be used for the test
-- `seed`: (integer) a seed to be used for random function and to produce reproducible results.
+
 
 In this example, we are using the `WISDM` dataset so only the `training_path` has to be provided, as it is a single text file. The values of the validation_split and test_split no validation set path is provided, so the available data under the *training_path* directory is split in two to create a training set and a validation set. 
 By default, 25% of the data is used for the test set and 75% data is further split into train_validation (80-20%).
@@ -155,74 +158,67 @@ preprocessing:
 The mentioned settings above are used for all the pretrained models in the model zoo of Human activity recognition in the [pretrained_models](./README_MODELS.md).
 
 </details></ul>
-<ul><details open><summary><a href="#2-5">2.5 Training parameters</a></summary><a id="2-5"></a>
-
-The training section contains various training configurations as well as the details on the model shape and architecture.
-
-<ul><details open><summary><a href="#2-5-1">2.5.1 Model parameters</a></summary><a id="2-5-1"></a>
-
-Information about the model you want to train is provided in the `training.model` section of the configuration file.
-
-The YAML code below shows how you can use the ST Hand Posture CNN2D model from the Model Zoo.
+<ul><details open><summary><a href="#2-5">2.5 Model parameters</a></summary><a id="2-5"></a>
+Information about the model you want to train is provided in the `model` section. That include the name, the input shape and other configurations related to the model.
 
 ```yaml
-training:
-  model:
-    name: ign # available choices are [ign, gmp]
-    input_shape: (24, 3, 1)
+model:
+  model_name: st_ign  # choices=['st_ign', 'st_gmp', 'custom_model']
+  input_shape: (24, 3, 1)
 ```
 </details></ul>
-<ul><details open><summary><a href="#2-5-2">2.5.2 Training setup</a></summary><a id="2-5-2"></a>
 
-The rest of the training setup is also provided in the `training` section of the configuration file, which includes callbacks, optimizers, etc. as illustrated below:
+<ul><details open><summary><a href="#2-6">2.6 Training parameters</a></summary><a id="2-6"></a>
+
+The training section contains various training configurations which includes callbacks, optimizers, etc. as illustrated below:
 
 ```yaml
 training:
-  dropout: 0.2
-  batch_size: 32
-  epochs: 1000
+  dropout: 0.5  # Optional, only used for `st_ign` or `st_gmp` model use it if you want a dropout layer to be included in the model
+  batch_size: 256
+  epochs: 200
   optimizer:
     Adam:
-      learning_rate: 0.01
-  callbacks:
+      learning_rate: 0.001
+  callbacks:          # Optional section
     ReduceLROnPlateau:
-      monitor: val_loss
-      factor: 0.1
-      patience: 20
-      min_lr: 1.0e-04
+      monitor: val_accuracy
+      mode: max
+      factor: 0.5
+      patience: 40
+      min_lr: 1.0e-05
     EarlyStopping:
       monitor: val_accuracy
+      mode: max
       restore_best_weights: true
-      patience: 40
+      patience: 60
 ```
 
 The `batch_size`, `epochs`, and `optimizer` attributes are mandatory. All the others are optional.
 
-The `dropout` attribute only makes sense if your model includes a dropout layer. 
+The `dropout` attribute only makes sense if your model includes a dropout layer. This will control the dropout ratio for all the available dropout layers in the model.
 
 All the TensorFlow optimizers can be used in the `optimizer` subsection. All the TensorFlow callbacks can be used in the `callbacks` subsection, except the ModelCheckpoint and TensorBoard callbacks that are built-in and can't be redefined.
 
 A variety of learning rate schedulers are provided with the Model Zoo. If you want to use one of them, just include it in the `callbacks` subsection. Refer to [the learning rate schedulers README](../../common/training/lr_schedulers_README.md) for a description of the available callbacks and learning rate plotting utility.
+</details></ul>
 
-</details></ul>
-</details></ul>
-<ul><details open><summary><a href="#2-6">2.6 Hydra and MLflow settings</a></summary><a id="2-6"></a>
+<ul><details open><summary><a href="#2-7">2.7 Hydra and MLflow settings</a></summary><a id="2-7"></a>
 
 The `mlflow` and `hydra` sections must always be present in the YAML configuration file. The `hydra` section can be used to specify the name of the directory where experiment directories are saved and/or the pattern used to name experiment directories. With the YAML code below, every time you run the Model Zoo, an experiment directory is created that contains all the directories and files created during the run. The names of experiment directories are all unique as they are based on the date and time of the run.
 
 ```yaml
 hydra:
-   run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+  run:
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
-
 </details></ul>
 </details>
 <details open><summary><a href="#3"><b>3. Train your model</b></a></summary><a id="3"></a>
@@ -230,15 +226,15 @@ mlflow:
 To launch your model training using a real dataset, run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name training_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name training_config.yaml
 ```
-The trained h5 model can be found in the [model zoo here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/human_activity_recognition/) or ../experiments_outputs folders.
+The trained h5 model can be found in the [model zoo here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/human_activity_recognition/) or ./tf/src/experiments_outputs/{run_time} folders.
 
 </details>
 <details open><summary><a href="#4"><b>4. Visualize your results</b></a></summary><a id="4"></a>
 <ul><details open><summary><a href="#4-1">4.1 Saved results</a></summary><a id="4-1"></a>
 
-All training and evaluation artifacts are saved under the current output simulation directory **"experiments_outputs/{run_time}"**.
+All training and evaluation artifacts are saved under the current output simulation directory **"./tf/src/experiments_outputs/{run_time}"**.
 
 For example, you can retrieve the plots of the accuracy/loss curves as below:
 
@@ -247,7 +243,7 @@ For example, you can retrieve the plots of the accuracy/loss curves as below:
 </details></ul>
 <ul><details open><summary><a href="#4-2">4.2 Run TensorBoard</a></summary><a id="4-2"></a>
 
-To visualize the training curves logged by TensorBoard, go to **"outputs/{run_time}"** and run the following command:
+To visualize the training curves logged by TensorBoard, go to **"./tf/src/experiments_outputs/{run_time}"** and run the following command:
 
 ```bash
 tensorboard --logdir logs
@@ -287,7 +283,7 @@ Once configured, your experiments will be logged directly and shown in the proje
 <ul><details open><summary><a href="#4-4">4.4 Run MLFlow</a></summary><a id="4-4"></a>
 
 MLflow is an API for logging parameters, code versions, metrics, and artifacts while running machine learning code and for visualizing results.
-To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command:
+To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command from the `./tf/src/experiments_outputs/:
 ```bash
 mlflow ui
 ```
@@ -300,13 +296,13 @@ And open the given IP address in your browser.
 
 You may want to continue training your own model on a new dataset rather than training your model from scratch.
 
-This can be done using the `model_path` attribute of the `general:` section to provide the path to the model file to use as illustrated in the example below.
+This can be done using the `model_path` attribute of the `model` section to provide the path to the model file to use as illustrated in the example below.
 
 ```yaml
-general:
-   model_path: <path-to-a-Keras-model-file>    # Path to the model file to use for training
-
 operation_mode: training
+
+model:
+   model_path: <path-to-a-Keras-model-file>    # Path to the model file to use for training
 
 training:
    batch_size: 32
@@ -323,7 +319,7 @@ training:
          patience: 10
 ```
 
-The model file must be a Keras model file with a '.h5' filename extension.
+The model file must be a Keras model file with a '.h5' or '.keras' filename extension.
 
 The `model:` subsection of the `training:` section is not present as we are not training a model from the Model Zoo. An error will be thrown if it is present when `model_path` is set.
 
@@ -351,34 +347,12 @@ training:
 Note that if you want to make it explicit that all the layers are trainable, you may add the `frozen_layers` attribute and leave it unset or set to *None*.
 
 </details></ul>
-<ul><details open><summary><a href="#5-3">5.3 Creating your own custom model</a></summary><a id="5-3"></a>
-
-You can create your own custom model and get it handled as any built-in Model Zoo model. If you want to do that, you need to modify a number of Python source code files that are all located under the [custom_model.py](../src/models/custom_model.py) file. Then provide `training.model.name=custom` in the configuration YAML file.
-
-An example of a custom model is given in the [custom_model.py](../src/models/custom_model.py). The users are free to modify it as they want.
-
-In the provided example, the *get_custom_model()* function takes in arguments:
-- `num_classes`, the number of classes.
-- `input_shape`, the input shape of the model.
-- `dropout`, the dropout rate if a dropout layer must be included in the model.
-
-Then, your custom model can be used as any other Model Zoo model using the configuration file as shown in the YAML code below:
-```yaml
-training:
-   model:
-      name: custom
-      input_shape: (128, 128, 3)
-   dropout: 0.2
-```
-
-</details></ul>
 <ul><details open><summary><a href="#5-4">5.4 Using chain_tb as operation mode (training and benchmarking)</a></summary><a id="5-4"></a>
 
 You can also use a special operation mode called `chain_tb` which will run a chain of operations, first training the model and then benchmarking the model either locally using the STM32Cube.AI CLI application (will provide memory footprints both RAM and FLASH) or using the STM32Cube.AI dev cloud (RAM, FLASH, Inference Time[ms]). To do this, users have to provide additional parameters as illustrated below:
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True # True for using cloud or set to False for using local installation
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe

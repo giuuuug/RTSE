@@ -1,6 +1,6 @@
 # Evaluation of Object Detection Model
 
-Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their TensorFlow Lite (.tflite) or Keras (.h5) object detection model. By uploading their model and a validation set, users can quickly and easily evaluate the performance of their model and generate various metrics, such as mAP.
+Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their TensorFlow Lite (.tflite) or Keras (.keras) object detection model. By uploading their model and a validation set, users can quickly and easily evaluate the performance of their model and generate various metrics, such as mAP.
 
 The evaluation service is designed to be fast, efficient, and accurate, making it an essential tool for anyone looking to evaluate the performance of their object detection model.
 
@@ -8,7 +8,7 @@ The evaluation service is designed to be fast, efficient, and accurate, making i
 
 <details open><summary><a href="#1"><b>1. Configure the YAML file</b></a></summary><a id="1"></a>
 
-To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
+To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
 
 Alternatively, you can follow the tutorial below, which shows how to evaluate your pre-trained object detection model using our evaluation service.
 
@@ -17,13 +17,14 @@ Alternatively, you can follow the tutorial below, which shows how to evaluate yo
 `operation_mode` should be set to evaluation and the `evaluation` section should be filled as in the following example:
 
 ```yaml
-general:
-  model_path: ../../stm32ai-modelzoo/object_detection/st_ssd_mobilenet_v1/ST_pretrainedmodel_public_dataset/coco_2017_person/st_ssd_mobilenet_v1_025_256/st_ssd_mobilenet_v1_025_256_int8.tflite
+model:
+   model_path: ../../stm32ai-modelzoo/object_detection/yolov2t/ST_pretrainedmodel_public_dataset/coco_2017_person/yolov2t_192/yolov2t_192.keras
+   model_type: yolov2t
 
 operation_mode: evaluation
 ```
 
-In this example, the path to the ST SSD MobileNet V1 model is provided in the `model_path` parameter.
+In this example, the path to the ST Yolo V2 Tiny model is provided in the `model_path` parameter under the `model` section.
 
 ```yaml
 evaluation:
@@ -38,12 +39,29 @@ Information about the dataset you want to use for evaluation is provided in the 
 
 ```yaml
 dataset:
-  dataset_name: COCO_2017_person                             # Dataset name. Optional, defaults to "<unnamed>".
-  test_path: <test-set-root-directory>                       # Path to the root directory of the test set.
-  check_image_files: False                                   # Enable/disable image file checking.
+  format: tfs                          # Dataset format. Required, accepts [tfs, coco, pascal_voc, darknet_yolo] 
+  dataset_name: coco                   # Dataset name. Required, accepts [custom_dataset, coco, pascal_voc, darknet_yolo]
+  class_names: [person]                # Class names. Required, list of the supported classes.
+  test_path: <test-set-root-directory> # Path to the root directory of the test set.
 ```
 
-In this example, the path to the validation set is provided in the `test_path` parameter.
+* **format**: Defines the annotation format of your dataset. This must match the format of your dataset annotations.
+
+  * `tfs`: TensorFlow Object Detection API format
+  * `coco`: COCO dataset format (JSON annotations)
+  * `pascal_voc`: Pascal VOC XML annotation format
+  * `darknet_yolo`: YOLO Darknet text file annotations
+
+* **dataset_name**: Specifies the dataset you are using. This can be a well-known dataset like coco, pascal_voc, or a custom_dataset if you have your own data and it follows the logic below:
+
+| Dataset Name     | Allowed Formats          | Description                                                                                  |
+|------------------|-------------------------|----------------------------------------------------------------------------------------------|
+| `coco`           | `coco`, `tfs`           | Native COCO format or TFS TensorFlow format                                                     |
+| `pascal_voc`     | `pascal_voc`, `tfs`     | Native Pascal VOC format or TFS TensorFlow format                                               |
+| `darknet_yolo`   | `darknet_yolo`, `tfs`   | Native Darknet YOLO format or TFS TensorFlow format                                             |
+| `custom_dataset` | `tfs`                   | Only TFS TensorFlow format; in case the dataset is already converted before evaluation                          |
+
+In this example, we are using the `coco` dataset in the `tfs` format and the path to the validation set is provided in the `test_path` parameter.
 
 The state machine below describes the rules to follow when handling dataset paths for the evaluation.
 <div align="center" style="width:50%; margin: auto;">
@@ -59,8 +77,9 @@ If you want to use a different split ratio, you need to specify the percentage t
 
 ```yaml
 dataset:
-  name: COCO_2017_person
-  class_names: [ person ]
+  format: tfs
+  dataset_name: coco
+  class_names: [person]
   training_path: ./datasets/COCO_2017_person/
   validation_path:
   validation_split: 0.20
@@ -109,14 +128,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -129,16 +148,16 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can eval
 python stm32ai_main.py 
 ```
 
-If you chose to update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) and use it, then run the following command from the UC folder:
+If you chose to update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) and use it, then run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name evaluation_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name evaluation_config.yaml
 ```
 
-In case you want to evaluate the accuracy of the quantized model and then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed, or you can use chained services like launching the **[chain_eqeb](../src/config_file_examples/chain_eqeb_config.yaml)** example with the command below:
+In case you want to evaluate the accuracy of the quantized model and then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed, or you can use chained services like launching the **[chain_eqeb](../config_file_examples/chain_eqeb_config.yaml)** example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqeb_config.yaml
 ```
 
 </details>

@@ -4,7 +4,7 @@ With ST Model Zoo, you can easily define and train your own TensorFlow neural ne
 
 ## Define my model
 
-First, create your own model in /src/models/custom_model.py for it to be automatically used with the model zoo training script.
+First, create your own model in /tf/src/models/custom_model.py for it to be automatically used with the model zoo training script.
 Open the python file and copy your model topology inside, here is the default example model:
 
 ```python
@@ -56,7 +56,7 @@ def get_custom_model(num_classes: int = None, input_shape: Tuple[int, int, int] 
     return model
 ```
 
-The model must be created inside the function get_custom_model. The input size and number of classes are then define in the user_config.yaml as below.
+The model must be created inside the function get_custom_model. The input size and number of classes are then defined in the user_config.yaml as it is detailed later on.
 
 
 ## Training my model
@@ -68,9 +68,9 @@ For this example, we used this dataset which contains butterflies images for cla
 
 Depending on what you want to do, you can use the operation modes below:
 - Training:
-    - To simply train the model and get as output the trained tensorflow model (.h5).
+    - To simply train the model and get as output the trained tensorflow model (.keras).
 - Chain_tqe:
-    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.h5 and .tflite)
+    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.keras and .tflite or .onnx)
 - Chain_tqeb:
     - To train, quantize, evaluate and benchmark the quantized model in one go.
 
@@ -102,8 +102,12 @@ general:
 
 operation_mode: training
 
+model:
+  model_name: custom
+  input_shape: (224, 224, 3)
+
 dataset:
-  name: butterflies
+  dataset_name: butterflies
   # Define the classes you want to detect, in this example, just the first 5
   # So my model output is of size 5
   class_names: ['ADONIS', 'AFRICAN GIANT SWALLOWTAIL', 'AMERICAN SNOOT', 'AN 88', 'APPOLLO'] 
@@ -119,10 +123,6 @@ preprocessing:
    color_mode: rgb # images in color, 3 channels.
 
 training:
-  model:
-    # put custom for model zoo to look for your model define earlier
-    name: custom
-    input_shape: (224, 224, 3) # images of size 224x224 in color (3 channels)
   # all the parameters below are standard in machine learning, you can look for them in google
   # they mostly depends on the topology of your model and will need a lot of testing
   batch_size: 64
@@ -141,16 +141,16 @@ training:
         patience: 60
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 For the Chain_tqe and Chain_tqeb operation modes, you need to edit the config file to add part related to the quantization and benchmark. Look at the documentation linked above for more details.
 
-You can also find examples of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/image_classification/src/config_file_examples)
+You can also find examples of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/image_classification/config_file_examples)
 
 ## Run the script:
 

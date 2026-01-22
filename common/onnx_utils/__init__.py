@@ -7,4 +7,4 @@
 #  *--------------------------------------------------------------------------------------------*/
 
 from .onnx_model_convertor import onnx_model_converter
-
+from .onnx_bn_folding import fold_batch_norm

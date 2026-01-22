@@ -6,6 +6,7 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 
+
 __all__ = [
             "benchmarking", 
             "data_augmentation",
@@ -19,6 +20,7 @@ __all__ = [
             "stm32ai_local",
             "training",
             "utils",
+            "compression",
 ]
 
 

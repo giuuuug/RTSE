@@ -189,6 +189,18 @@ def random_gaussian_noise(images, stddev=None, pixels_range=(0.0, 1.0), change_r
     
 
 def check_random_crop_arguments(crop_center_x, crop_center_y, crop_width, crop_height, interpolation):
+    """
+    check_random_crop_arguments assesses the validity of random parameters and potentially raises an error
+    
+        Args:
+            crop_center_x (tuple): range for the x coordinates of the centers of the crop regions. Expects 2 floats between 0 and 1.
+            crop_center_y (tuple): range for the y coordinates of the centers of the crop regions. Expects 2 floats between 0 and 1.
+            crop_width (tuple): range for the widths of the crop regions. A tuple of 2 floats between 0 and 1.
+            crop_height (tuple): range for the heights of the crop regions. A tuple of 2 floats between 0 and 1.
+            interpolation: method to resize the cropped image. Either 'bilinear' or 'nearest'.
+        Returns:
+
+    """
 
     def check_value_range(arg_value, arg_name):
         if isinstance(arg_value, (tuple, list)):
@@ -388,3 +400,38 @@ def random_jpeg_quality(images, jpeg_quality=None, pixels_range=(0.0, 1.0), chan
     outputs = apply_change_rate(images, images_aug, change_rate)
     return remap_pixel_values_range(outputs, (0.0, 1.0), pixels_range, dtype=pixels_dtype)
 
+
+
+def random_periodic_resizing(
+                images,
+                interpolation=None,
+                new_image_size=None):
+    """
+    This function periodically resizes the input images. The size of
+    the images is held constant for a specified number of batches,
+    referred to as the "resizing period". Every time a period ends,
+    a new size is sampled from a specified set of sizes. Then, the
+    size is held constant for the next period, etc.
+    
+    Arguments:
+        images:
+            Input RGB or grayscale images, a tensor with shape
+            [batch_size, width, height, channels]. 
+        interpolation:
+            A string, the interpolation method used to resize the images.
+            Supported values are "bilinear", "nearest", "area", "gaussian",
+            "lanczos3", "lanczos5", "bicubic" and "mitchellcubic"
+            (resizing is done using the Tensorflow tf.image.resize() function).
+        new_image_size:
+            A tuple or list of integers, the set of sizes the image
+            sizes are sampled from.
+
+    Returns:
+        The resized images.
+    """
+
+
+    # Resize the images
+    resized_images = tf.image.resize(images, new_image_size, method=interpolation)
+
+    return resized_images

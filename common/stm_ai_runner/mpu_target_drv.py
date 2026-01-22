@@ -50,7 +50,7 @@ class MpuTargetDriver(AiRunnerDriver):
         """Connect to the stm.ai run-time"""
         # connect to the board and send NN model
         descriptor = desc.split(":", maxsplit=3)
-        self.model = kwargs['context'].get_option('model')[0]
+        self.model = kwargs['context'].get_option('general.model')[0]
         if len(descriptor) > 0:
             self.remote_host = descriptor[0]
         if len(descriptor) > 1:

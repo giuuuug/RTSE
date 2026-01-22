@@ -1856,12 +1856,12 @@ class AiDllDriver(AiRunnerDriver):
         HwIOError
             If weights are not compatible with the network
         """
-        buffers_data, buffers_size = self._load_weights(weights)
+        self._buffers_data, buffers_size = self._load_weights(weights)
 
         expected_size = sum([self._info.weights[weight_index].size_bytes
                              for weight_index in range(self._info.n_weights)])
 
-        buffers_count, params_count = len(buffers_data), self._info.n_weights
+        buffers_count, params_count = len(self._buffers_data), self._info.n_weights
 
         if buffers_count != params_count:
             msg = f'Provided weights count are incompatible (got: {buffers_count} expected: {params_count})'
@@ -1877,10 +1877,10 @@ class AiDllDriver(AiRunnerDriver):
         weight_pointers = []
         for weight_index in range(self._info.n_weights):
             # minimum size should be 8 for ctype map
-            if len(buffers_data[weight_index]) < 8:
-                buffers_data[weight_index] += bytearray(8 - len(buffers_data[weight_index]))
-            data_ptr = (ct.POINTER(ct.c_uint8 * len(buffers_data[weight_index]))) \
-                .from_buffer(buffers_data[weight_index])
+            if len(self._buffers_data[weight_index]) < 8:
+                self._buffers_data[weight_index] += bytearray(8 - len(self._buffers_data[weight_index]))
+            data_ptr = (ct.POINTER(ct.c_uint8 * len(self._buffers_data[weight_index]))) \
+                .from_buffer(self._buffers_data[weight_index])
             weight_pointers.append(ct.cast(ct.addressof(data_ptr), StAiPtr))
 
         weight_pointers = (StAiPtr * len(weight_pointers))(*weight_pointers)
@@ -1933,7 +1933,7 @@ class AiDllDriver(AiRunnerDriver):
         context = kwargs.pop('context', None)
         # internal_apis = str(context.get_internal_apis()).lower() if context else ''
         # public_apis = str(context.get_public_apis()).lower() if context else ''
-        self._name = context.get_option('name') if context else 'network'
+        self._name = context.get_option('general.name') if context else 'network'
         details = context.get_option('validate.details') if context else None
 
         if reload is None:
@@ -2514,6 +2514,8 @@ class AiDllDriver(AiRunnerDriver):
             'hash': model_info.model_signature.decode('UTF-8'),
             'n_nodes': model_info.n_nodes,
             'macc': model_info.n_macc,
+            'n_init_time': 0,
+            'n_install_time': 0,
             'runtime': self._to_runtime(model_info),
             'device': {
                 'desc': f'{platform.machine()}, {platform.processor()}, {platform.system()}',

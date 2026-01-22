@@ -8,27 +8,24 @@ general:
   display_figures: True 
 
 
-operation_mode: chain_tbqeb #chain_tbqeb
+operation_mode: chain_tqe #chain_tqeb
 #choices=['training' , 'evaluation', 'prediction', 'deployment', 'quantization', 'benchmarking',
-#        'chain_tbqeb','chain_tqe','chain_eqe','chain_qb','chain_eqeb','chain_qd ']
-
+#        'chain_tqeb','chain_tqe',' chain_eqe','chain_qb','chain_eqeb','chain_qd ']
+model: 
+  model_name: yamnet_e256
+  input_shape: (64, 96, 1)
+  pretrained: True # Set to True if you want to use pretrained weights provided in the model zoo
+                           # Yamnet-256 can only be used with pretrained weights.
 dataset:
-  name: esc10
+  dataset_name: esc10
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves']
   file_extension: '.wav'
-  training_audio_path: ./datasets/ESC-50/audio # Mandatory
-  training_csv_path:   ./datasets/ESC-50/meta/esc50.csv # Mandatory
+  training_audio_path: ../datasets/ESC-50/audio # Mandatory
+  training_csv_path:   ../datasets/ESC-50/meta/esc50.csv # Mandatory
 
   validation_audio_path: # Optional
   validation_csv_path: # Optional
   validation_split: 0.2  # Optional, default value is 0.2
-
-  quantization_audio_path: # Optional
-  quantization_csv_path: # Optional
-  quantization_split: 0.1 # Optional
-
-  test_audio_path: # Optional
-  test_csv_path: # Optional
 
   multi_label: False 
   use_garbage_class: False 
@@ -66,6 +63,7 @@ feature_extraction:
   to_db : False
   include_last_patch: False
 
+# This section is not mandatory for training, but we leave it here as it is usually included.
 data_augmentation:
   GaussianNoise: 
     enable: True
@@ -83,12 +81,6 @@ data_augmentation:
     mask_value : 0
 
 training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: yamnet
-    embedding_size: 256
-    input_shape: (64, 96, 1)
-    pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
-                             # Yamnet-256 can only be used with pretrained weights.
   fine_tune: False # Set to True if you want to fine-tune a pretrained model from the zoo
   dropout: 0
   batch_size: 16
@@ -105,44 +97,22 @@ training:
       factor: 0.5
       patience: 100
       min_lr: 1.0e-05
-    # LRWarmupCosineDecay:
-    #   initial_lr: 0.0001
-    #   warmup_steps: 100
-    #   max_lr: 0.005
-    #   hold_steps: 100
-    #   decay_steps: 800
-    #   end_lr: 5.0e-05
     EarlyStopping:
       monitor: val_accuracy
       mode: max
       restore_best_weights: true
       patience: 60
-#  trained_model_path: trained.h5   # Optional, use it if you want to save the best model at the end of the training to a path of your choice
 
 quantization:
-  quantizer: TFlite_converter   # onnx_quantizer for ONNX quantization
+  quantizer: TFlite_converter
   quantization_type: PTQ
   quantization_input_type: int8
   quantization_output_type: float
-  # granularity: per_tensor            # Optional, defaults to "per_channel". 
-  # optimize: True                     # Optional, defaults to False.
-  # target_opset: 17                   # Optional, defaults to 17. Only used for ONNX quantization
   export_dir: quantized_models
 
-tools:
-  stedgeai:
-    version: 10.2.0
-    optimization: balanced
-    on_cloud: True
-    path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
-  path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe
-
-benchmarking:
-  board: B-U585I-IOT02A 
-
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}

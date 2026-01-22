@@ -29,7 +29,7 @@ from .tflm_utils import tflm_node_type_to_str
 from .utils import set_log_level, get_log_level
 
 
-__version__ = '2.0'
+__version__ = '2.1'
 
 
 def _to_version(ver):
@@ -326,15 +326,18 @@ class DeviceDecoder():
         self._s_msgs = []
 
     def _is_stellar_family(self):
-        """."""
-        return self.get_dev_id() == 0x2511 or self.get_dev_id() == 0x2643 or \
-            self.get_dev_id() == 0x2646 or self.get_dev_id() == 0x2647 or \
-            self.get_dev_id() == 0x2633 or self.get_dev_id() == 0x2636 or \
-            self.get_dev_id() == 0x2637 or self.get_dev_id() == 0x2A47
+        """Return true if the device ID is in the stellar family"""
+        # SR5E1, SR6P3, SR6P6, SR6P7, SR6G3 
+        # SR6G6, SR6G7, SR6P7G7, SR6P3E
+        stellar_ids = {
+            0x2511, 0x2643, 0x2646, 0x2647, 0x2633,
+            0x2636, 0x2637, 0x2A47, 0x2663
+        }
+        return self.get_dev_id() in stellar_ids
 
-    def _is_stm32_n6(self):
+    def _is_stm32_npu(self):
         """."""
-        return self.get_dev_id() == 0x486
+        return self.get_dev_id() in [0x486, 0x47B] # 0x486: N6 / 0x47B: H7P
 
     def family(self) -> str:
         """Return family description"""  # noqa: DAR101,DAR201,DAR401
@@ -359,13 +362,13 @@ class DeviceDecoder():
     def get_attrs(self) -> List[str]:
         """Return the device settings"""  # noqa: DAR101,DAR201,DAR401
         attrs_ = stm32_attr_config(self._sys_info_msg.cache)
-        if self._is_stm32_n6() and self._config:
+        if self._is_stm32_npu() and self._config:
             npu_cache = int(self._config.get('npu_cache', '0'))
             attrs_.append(f'npu_cache={npu_cache}')
             for key, val in self._config.items():
                 if 'freq' in key:
                     attrs_.append(f'{key}={int(int(val) / 1000000)}MHz')
-        elif self._is_stm32_n6() and hasattr(self._sys_info_msg, 'extra'):
+        elif self._is_stm32_npu() and hasattr(self._sys_info_msg, 'extra'):
             attrs_.append(f'npu_freq={int(self._sys_info_msg.extra[1] / 1000000)}MHz')
             attrs_.append(f'nic_freq={int(self._sys_info_msg.extra[2] / 1000000)}MHz')
         return attrs_
@@ -590,6 +593,8 @@ class AiPbMsg(AiRunnerDriver):
                 cap_.append(AiRunner.Caps.RELOC)
             if self._sync.capability & stm32msg.CAP_READ_WRITE:
                 cap_.append(AiRunner.Caps.MEMORY_RW)
+            if self._sync.capability & stm32msg.CAP_USBC:
+                cap_.append(AiRunner.Caps.USBC)
             return cap_
         return []
 
@@ -597,6 +602,7 @@ class AiPbMsg(AiRunnerDriver):
         self._models = dict()
         self._sys_info = None
         self._sync = None
+        self._cmd_disconnect()
         self._io_drv.disconnect()
 
     def short_desc(self) -> str:
@@ -794,6 +800,13 @@ class AiPbMsg(AiRunnerDriver):
             self._packet_out_size = resp.sinfo.com_param
         return resp.sinfo
 
+    def _cmd_disconnect(self):
+        """DISCONNECT command"""  # noqa: DAR101,DAR201,DAR401
+        self._send_request(stm32msg.CMD_DISCONNECT)
+        self._packet_in_size = stm32msg.IO_IN_PACKET_SIZE
+        self._packet_out_size = stm32msg.IO_OUT_PACKET_SIZE
+        self._logger.debug('disconnect PB command sent..')
+
     def _cmd_model_info(self, timeout, param=0):
         """NETWORK_INFO command"""  # noqa: DAR101,DAR201,DAR401
         self._send_request(stm32msg.CMD_NETWORK_INFO, param=param)
@@ -947,6 +960,8 @@ class AiPbMsg(AiRunnerDriver):
             'rt': rt_decoder_.name,
             'compile_datetime': model_info.compile_datetime,
             'hash': model_info.signature,
+            'n_init_time': model_info.n_init_time,
+            'n_install_time': model_info.n_install_time,
             'n_nodes': model_info.n_nodes,
             'inputs': _get_model_io_desc(model['tens_inputs']),
             'outputs': _get_model_io_desc(model['tens_outputs']),
@@ -1008,6 +1023,8 @@ class AiPbMsg(AiRunnerDriver):
         if self._sys_info is None:
             self._sys_info = self._cmd_sys_info(timeout=500)
         self._log_msg(self._sys_info, 'sys_info')
+        self._logger.debug('set packet size to %d/%d bytes', self._packet_in_size,
+                           self._packet_out_size)
 
         while cont:
             self._target_msg = []  # reset buffer to store the 's:' message from target

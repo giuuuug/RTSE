@@ -1,6 +1,6 @@
 # Instance segmentation STM32 model zoo
 
-Remember that minimalistic yaml files are available [here](../src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that minimalistic yaml files are available [here](../config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
 
 <details open><summary><a href="#1"><b>1. Instance segmentation Model Zoo introduction</b></a></summary><a id="1"></a>
 

@@ -49,8 +49,8 @@ def _to_cli_arg(key: str, val: Any, vers: Union[str, STMAiVersion, None] = None,
 
 
 _COMPILE_OPTIONS_ = {
-    'no-inputs-allocation': (False, (bool,), '--no-inputs-allocation'),
-    'no-outputs-allocation': (False, (bool,), '--no-outputs-allocation'),
+    'no_inputs_allocation': (False, (bool,), '--no-inputs-allocation'),
+    'no_outputs_allocation': (False, (bool,), '--no-outputs-allocation'),
     'dll': (True, (bool,), '--dll'),
     'compression': ('lossless', (str, int), '-c'),
     "split_weights": (False, (bool,), '--split-weights'),

@@ -28,7 +28,9 @@ import os
 import sys
 import math
 import tensorflow as tf
-from tensorflow.keras import backend
+#from tensorflow.keras import backend
+from keras.src import backend
+import numpy as np
 
       
 def _check_scheduler_arguments(args, arg_names, scheduler_name):      
@@ -50,6 +52,29 @@ def get_scheduler_names():
             "LRCosineDecay", "LRWarmupCosineDecay", "LRCosineDecayRestarts",
             "LRPolynomialDecay", "LRPolynomialDecayRestarts",
             "LRPiecewiseConstantDecay"]
+
+def generic_on_epoch_begin(self, epoch, logs=None):
+    """
+    This function is a generic implementation for the on_epoch_begin method of all LR schedulers.
+    """
+    if not hasattr(self.model.optimizer, "learning_rate"):
+        raise ValueError('\nOptimizer must have a "learning_rate" attribute.')
+    try:  # new API
+        learning_rate = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
+        learning_rate = self.schedule(epoch, learning_rate)
+    except TypeError:  # Support for old API for backward compatibility
+        learning_rate = self.schedule(epoch)
+    if not isinstance(learning_rate, (float, np.float32, np.float64)):
+        raise ValueError(
+            "The output of the `schedule` function should be a float. "
+            f"Got: {learning_rate}"
+        )
+    self.model.optimizer.learning_rate = learning_rate
+    if self.verbose > 0:
+        print("\nEpoch {}: {} setting "
+              "learning rate to {:.4e}.".format(epoch + 1, self.name, learning_rate))
 
 
 class LRLinearDecay(tf.keras.callbacks.Callback):
@@ -113,17 +138,13 @@ class LRLinearDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRLinearDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRExponentialDecay(tf.keras.callbacks.Callback):
@@ -189,17 +210,13 @@ class LRExponentialDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRExponentialDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRStepDecay(tf.keras.callbacks.Callback):
@@ -254,17 +271,13 @@ class LRStepDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRStepDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRCosineDecay(tf.keras.callbacks.Callback):
@@ -341,17 +354,13 @@ class LRCosineDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRCosineDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRWarmupCosineDecay(tf.keras.callbacks.Callback):
@@ -459,17 +468,14 @@ class LRWarmupCosineDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRWarmupCosineDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs=None)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+#        logs["lr"] = backend.get_value(self.model.optimizer.learning_rate)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRCosineDecayRestarts(tf.keras.callbacks.Callback):
@@ -578,17 +584,14 @@ class LRCosineDecayRestarts(tf.keras.callbacks.Callback):
         return self.initial_lr * decayed
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRCosineDecayRestarts setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs=None)
+                  
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRPolynomialDecay(tf.keras.callbacks.Callback):
@@ -652,17 +655,13 @@ class LRPolynomialDecay(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRPolynomialDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs=None)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRPolynomialDecayRestarts(tf.keras.callbacks.Callback):
@@ -727,17 +726,13 @@ class LRPolynomialDecayRestarts(tf.keras.callbacks.Callback):
         return lr
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRPolynomialDecayRestarts setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs=None)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
 
 
 class LRPiecewiseConstantDecay(tf.keras.callbacks.Callback):
@@ -791,14 +786,11 @@ class LRPiecewiseConstantDecay(tf.keras.callbacks.Callback):
                 return self.values[i]
 
     def on_epoch_begin(self, epoch, logs=None):
-        if not hasattr(self.model.optimizer, "lr"):
-            raise ValueError('\nOptimizer must have a "lr" attribute.')
-        lr = self.schedule(epoch)
-        backend.set_value(self.model.optimizer.lr, lr)
-        if self.verbose > 0:
-            print("\nEpoch {}: LRPiecewiseConstantDecay setting "
-                  "learning rate to {:.4e}.".format(epoch + 1, lr))
+        generic_on_epoch_begin(self, epoch, logs=None)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        logs["lr"] = backend.get_value(self.model.optimizer.lr)
+        logs["lr"] = float(
+            backend.convert_to_numpy(self.model.optimizer.learning_rate)
+        )
+

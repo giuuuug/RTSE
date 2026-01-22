@@ -22,8 +22,6 @@ For any details regarding the parameters of the config file, you can look here:
 
 The way ST Model Zoo works is that you edit the user_config.yaml available for each use case and run the stm32ai_main.py python script. 
 
-Here is an example where we evaluate a .h5 model before quantizing it, evaluate it again for comparison and benchmark it on a STM32H747I-DISCO.
-
 The most important parts here are to define:
 - The path to the model used and its type
 - The operation mode
@@ -35,14 +33,16 @@ It is highly recommended to use real data for the quantization.
 ```yaml
 # user_config.yaml
 
-general:
-  model_path: ../../stm32ai-modelzoo/object_detection/st_ssd_mobilenet_v1/ST_pretrainedmodel_public_dataset/coco_2017_person/st_ssd_mobilenet_v1_025_256/st_ssd_mobilenet_v1_025_256.h5
-  model_type: st_ssd_mobilenet_v1
+model:
+  model_path: ../../../stm32ai-modelzoo/blob/master/object_detection/st_yoloxn/ST_pretrainedmodel_custom_dataset/st_person/st_yoloxn_d033_w025_416/st_yoloxn_d033_w025_416_int8.tflite
+  model_type: st_yoloxn
 operation_mode: chain_eqeb
 
 # dataset in YOLO Darknet format
 # look at the tutorial about the dataset for more information
 dataset:
+   format: tfs
+   dataset_name: coco
    class_names: [<your-classes-used-during-training>]
    test_path: <test-set-root-directory>  
    # Needed if quantization in operation mode
@@ -76,7 +76,6 @@ quantization:
 # Needed if quantization in operation mode
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -87,14 +86,14 @@ benchmarking:
    board: STM32H747I-DISCO
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
-You can look at user_config.yaml example [here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/object_detection/src/config_file_examples) for other operation modes.
+You can look at user_config.yaml example [here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/object_detection/config_file_examples) for other operation modes.
 
 ## Run the script:
 
@@ -111,7 +110,7 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 ## Local benchmarking:
 
 To make the benchmark locally instead of using the ST Edge AI Development Cloud you need to add the path for path_to_stedgeai and to set on_cloud to false in the yaml.
-- [ST Edge AI](https://www.st.com/en/embedded-software/x-cube-ai.html)
+- [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html)
 - [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html)
 
 ## Available boards for benchmark:

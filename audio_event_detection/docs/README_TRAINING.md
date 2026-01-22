@@ -3,7 +3,7 @@
 This tutorial shows how to train from scratch or apply transfer learning on an AED model.
 As an example we will demonstrate the workflow on the [ESC-10]("https://github.com/karolpiczak/ESC-50") classification dataset.
 
-`Note:` If you are training a model in order to deploy it with the [STM32 application code](../../application_code/sensing_free_rtos/STM32U5/README.md), please check out the application specifications [here](./README_DEPLOYMENT.md).
+`Note:` If you are training a model in order to deploy it with the [STM32 application code](../../application_code/sensing/STM32U5/README.md), please check out the application specifications [here](./README_DEPLOYMENT.md).
 
 ## <a id="">Table of contents</a>
 
@@ -11,16 +11,16 @@ As an example we will demonstrate the workflow on the [ESC-10]("https://github.c
 
 ESC-10 is distributed as part of a larger dataset, ESC-50. In this tutorial, we will download the ESC-50 dataset, but only use the ESC-10 subset for training, evaluating or performing transfer learning on the models.
 
-Download the latest dataset release from https://github.com/karolpiczak/ESC-50#download
+Download the latest dataset release from https://github.com/karolpiczak/ESC-50#download .
 
 Then, extract the archive to a folder of your choice. 
 
-By default, the model zoo expects that datasets are given in ESC format, meaning the same format as the [ESC-50](https://github.com/karolpiczak/ESC-50) dataset.
+By default, the audio event detection use case expects that datasets are given in ESC format, meaning the same format as the [ESC-50](https://github.com/karolpiczak/ESC-50) dataset.
 
 This means that your dataset must be comprised of 
 - A folder containing the audio files. All audio files must share the same format. No mixing .wav and .flac in the same folder, for example.
 - A .csv file with at least a "filename" column and a "category" column.
-  - The "filename" column must contain the filenames of the audio files (with or without the file extension)
+  - The "filename" column must contain the filenames of the audio files (with or without the file extension).
   - The "category" column must contain the label(s) in string format. For multi-label datasets, this column should contain lists of strings.
   
 For example, such a .csv file (with a single row here) would look like this : 
@@ -34,20 +34,21 @@ The model zoo also supports specific dataset that are not provided in ESC format
 These datasets are usually not provided in the ESC format expected by the model zoo.
 Fortunately, for such datasets, scripts converting these datasets to the ESC format used by the model zoo are provided, so you don't need to do any of the work yourself.
 
-If you want to use FSD50K, download the latest release from https://zenodo.org/record/4060432
+If you want to use FSD50K, download the latest release from https://zenodo.org/record/4060432 .
 Then, extract the several archives you have downloaded to a folder of your choice.
 
-For more details on how to use FSD50K in the model zoo, please consult section 8 of the [main README](./README_OVERVIEW.md)
+For more details on how to use FSD50K in the model zoo, please consult section 8 of the [main README](./README_OVERVIEW.md).
 
 </details>
 <details open><summary><a href="#2"><b>2. Create your configuration file</b></a></summary><a id="2"></a>
 <ul><details open><summary><a href="#2-1">2.1 Overview</a></summary><a id="2-1"></a>
 
-The training, evaluation, quantization and benchmarking of the model are driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [src](../src) directory.
+The training, evaluation, quantization and benchmarking of the model are driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [tf/src](../tf/src) directory.
 
 A configuration file includes the following sections:
 
 - `general`, describes your project, including project name, directory where to save models, etc.
+- `model`, parameters specific to the model you want to use
 - `operation_mode`, a string describing the operation mode of the model zoo. You'll want to set it to "training" for this tutorial.
 - `dataset`, describes the dataset your are using, including directory paths, class names, etc.
 - `dataset_specific`, parameters specific to certain datasets supported by the model zoo(currently, only FSD50K)
@@ -55,13 +56,13 @@ A configuration file includes the following sections:
 - `feature_extraction`, parameters used to perform frequency-domain processing of the audio-data, e.g. spectrogram computation.
 - `training`, specifies your training setup, including batch size, number of epochs, optimizer, callbacks, etc.
 - `quantization`, specifies the quantization configuration to reduce your model memory usage and inference time.
-- `stm32ai`, specifies the STM32Cube.AI configuration to benchmark your model on a board, including memory footprints, inference time, etc.
+- `stm32ai`, specifies the STEdgeAI Core configuration to benchmark your model on a board, including memory footprints, inference time, etc.
 - `mlflow`, specifies the folder to save MLFlow logs.
 - `hydra`, specifies the folder to save Hydra logs.
 
-This tutorial only describes enough settings for you to be able to run an example. Please refer  to the [main README](./README_OVERVIEW.md) for more information. The model zoo offers many more features than those described in this short tutorial.
+This tutorial only describes enough settings for you to be able to run the training service. Please refer  to the [main README](./README_OVERVIEW.md) for more information. The model zoo offers many more features than those described in this short tutorial.
 
-#### **TensorFlow deterministic operations**
+<ul><details open><summary><a href="#2-1-1">2.1.1 Tensorflow deterministic operations</a></summary><a id="2-1-1"></a>
 
 If you want your experiments to be fully reproducible, you need to activate the `deterministic_ops` attribute.
 
@@ -108,7 +109,6 @@ general:
    project_name: myproject           # Project name. Optional, defaults to "<unnamed>".
    logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
    saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-   model_path:           # Path to a model file. # Leave blank if you want to train from scratch, or perform transfer learning with a backbone provided in the model zoo.
    global_seed: 120                  # Seed used to seed random generators (an integer). Optional, defaults to 120.
    deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
    display_figures: True             # Enable/disable the display of figures (training learning curves and confusion matrices).
@@ -127,7 +127,7 @@ Information about the dataset you want to use is provided in the `dataset` secti
 
 ```yaml
 dataset:
-  name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
+  dataset_name: esc10 # Name of the dataset. Use 'esc10' for ESC-10, 'fsd50k' for FSD50K and 'custom' for any other dataset
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves'] # Names of the classes to use when training your model
   file_extension: '.wav' # File extension of the audio files
   training_audio_path: ../datasets/ESC-50/audio # Mandatory
@@ -169,13 +169,11 @@ Information about the model you want to train is provided in the `model` section
 The YAML code below shows how you can use a Yamnet-256 model from the Model Zoo.
 
 ```yaml
-training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: yamnet # Name of the model
-    embedding_size: 256
-    input_shape: (64, 96, 1)
-    pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
-                             # Yamnet-256 can only be used with pretrained weights.
+model: 
+  model_name: yamnet_e256 # Name of the model
+  input_shape: (64, 96, 1)
+  pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
+                            # Yamnet-256 can only be used with pretrained weights.
 ```
 
 The `pretrained_weights` attribute is set to "True", which indicates that you want to load a pretrained backbone and perform transfer learning. Note that in our case, Yamnet-256 can only be used with pretrained weights, but this is not the case for other models.
@@ -184,21 +182,11 @@ For more information on the different modes of transfer learning (transfer learn
 
 For more information on the different models available of the model zoo, please consult appendix A of the [main README](./README_OVERVIEW.md)
 
-You may want to use your own model instead of a model from the Model Zoo. This can be done by simply leaving the `training.model` section empty, and instead passing a path to a `.h5` Keras model file in `general.model_path`, like so : 
+You may want to use your own model instead of a model from the Model Zoo. This can be done by instead passing a path to your .h5 or .keras file to the `model_path` attribute in the `model` section, like so : 
 ```yaml
-general:
-   project_name: myproject           # Project name. Optional, defaults to "<unnamed>".
-   logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
-   saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-   model_path:  <path_to_your_model.h5>         # Path to a model file. # Leave blank if you want to train from scratch, or perform transfer learning with a backbone provided in the model zoo.
-   global_seed: 120                  # Seed used to seed random generators (an integer). Optional, defaults to 120.
-   deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
-   display_figures: True             # Enable/disable the display of figures (training learning curves and confusion matrices).
-                                     # Optional, defaults to True.
-   gpu_memory_limit: 5              # Maximum amount of GPU memory in GBytes that TensorFlow may use (an integer).
-
-training:
-   model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
+  model:
+    model_path: <path_to_your_model.keras>
+    input_shape: (64, 96, 1)
    ```
 
 </details></ul>
@@ -304,18 +292,12 @@ The training setup is described in the `training` section of the configuration f
 
 ```yaml
 training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: yamnet # Name of the model
-    embedding_size: 256
-    input_shape: (64, 96, 1)
-    pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
-                             # Yamnet-256 can only be used with pretrained weights.
   fine_tune: False # Set to True if you want to fine-tune a pretrained model from the zoo
   dropout: 0 # Set to a float >0 to add dropout to the last layer of the model
   batch_size: 16
   epochs: 50 # Number of epochs to run 
   resume_training_from: # Optional, use to resume a training from a previous experiment.
-                        # Example: experiments_outputs/2023_10_26_18_36_09/saved_models/last_augmented_model.h5 
+                        # Example: experiments_outputs/2023_10_26_18_36_09/saved_models/last_augmented_model.keras
   optimizer:
     Adam:  # Use the ADAM optimizer with learning rate 0.001
       learning_rate: 0.001
@@ -331,15 +313,10 @@ training:
       mode: max
       restore_best_weights: true
       patience: 60
-#  trained_model_path: trained.h5   # Optional, use it if you want to save the best model at the end of the training to a path of your choice
+
 ```
 
-The `model` subsection is used to specify a model that is available with the Model Zoo:
-- The `name` and `input_shape` attributes must always be present.
-- Additional attributes are needed depending on the type of model. For example, an `embedding_size` attribute is required for a Yamnet model and  `n_stacks` and `version` attributes are required for a Miniresnet model. To know which models require which attributes, please consult Appending A of the [main README](./README_OVERVIEW.md), or the [models.json](./json/models.json) documentation. Additionally, you can reference the configuration files provided with the pretrained models in the [model zoo on GH](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/audio_event_detection/)
-- The optional `pretrained_weights` attribute can be used to load pretrained weights in the model before it gets trained, and perform transfer learning.
-If set to True, pretrained weights are loaded, and if set to False the model is trained from scratch. If you want to load pretrained weights, and fine-tune the entire model (instead of just performing transfer learning by retraining the last layer), you can set the `fine_tune` parameter to True.
-Transfer learning is covered in section 5 of the [main README](./README_OVERVIEW.md)
+Transfer learning is covered in section 5 of the [main README](./README_OVERVIEW.md).
 
 The `batch_size` and `epochs` attributes are mandatory.
 
@@ -351,7 +328,7 @@ The `callbacks` subsection is optional. All the Keras callbacks are supported. N
 
 A variety of learning rate schedulers are provided with the Model Zoo. If you want to use one of them, just include it in the `callbacks` subsection. Refer to [the learning rate schedulers README](../../common/training/lr_schedulers_README.md) for a description of the available callbacks and learning rate plotting utility.
 
-The best model obtained at the end of the training is saved in the 'experiments_outputs/\<date-and-time\>/saved_models' directory and is called 'best_model.h5' (see section 1.3 of the [main README](./README_OVERVIEW.md)). Make sure not to use the 'best_augmentation_model.h5' file for deployment or evaluation as it includes the data augmentation layers.
+The best model obtained at the end of the training is saved in the `tf/src/experiments_outputs/\<date-and-time\>/saved_models` directory and is called `best_model.keras` (see section 1.3 of the [main README](./README_OVERVIEW.md)). Make sure not to use the 'best_augmentation_model.keras' file for deployment or evaluation as it includes the data augmentation layers.
 For more details on what each parameter does, please refer to section 3.9 of the [main README](./README_OVERVIEW.md)
 
 </details></ul>
@@ -368,10 +345,10 @@ python stm32ai_main.py
 <details open><summary><a href="#4"><b>4. Model evaluation</b></a></summary><a id="4"></a>
 
 After training is completed, your model will be evaluated on the validation set.
-Additionally, if you have provided a test set (see section <a href="2.5"> 2.5 - Dataset specification </a>), the model will also be evaluated on the provided test set.
+Additionally, if you have provided a test set (see section <a href="#2.5"> 2.5 - Dataset specification </a>), the model will also be evaluated on the provided test set.
 
 Two kinds of accuracies will be reported : patch-level accuracy, and clip-level accuracy.
-As we explained in section <a href="2.8"> 2.8 Audio feature extraction (frequency domain preprocessing) </a>, each audio clip is converted to a spectrogram and split into patches before being passed to the model.
+As we explained in section <a href="#2.8"> 2.8 Audio feature extraction (frequency domain preprocessing) </a>, each audio clip is converted to a spectrogram and split into patches before being passed to the model.
 
 Once the model has made predictions on each patch, we have a predicted label vector per patch, and so we can compute the accuracy patch-per-patch : this is patch-level accuracy.
 We can also aggregate the predictions based on which audio clip each patch belonged to, giving us a single predicted label vector for each audio clip. These are used to compute clip-level accuracy.
@@ -386,26 +363,26 @@ All training artifacts, figures, and models are saved under the output directory
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
-By default, the output directory is `src/experiments_outputs/<date_time_of_your_run>/`(../experiments_outputs). Note that this directory will NOT exist before you run the model zoo at least once.
+By default, the output directory is `tf/src/experiments_outputs/<date_time_of_your_run>/`(../experiments_outputs). Note that this directory will NOT exist before you run the model zoo at least once.
 
 This directory contains the following files : 
 - The .hydra folder contains Hydra logs
 - The logs folder contains Tensorboard logs, as well as a train_metrics.csv file containing the training metrics for each epoch.
 - The saved_models directory contains the output float models (if there are any)
-  - best_augmented_model.h5 is the float model that obtained the best validation accuracy, with the data augmentation layers still attached.
-  - last_augmented_model.h5 is the float model obtained in the last epoch, with the data augmentation layers still attached
-  - best_model.h5 is the float model that obtained the best accuracy without any of the data augmentation layers. It is ready to quantize.
+  - best_augmented_model.keras is the float model that obtained the best validation accuracy, with the data augmentation layers still attached.
+  - last_augmented_model.keras is the float model obtained in the last epoch, with the data augmentation layers still attached
+  - best_model.keras is the float model that obtained the best accuracy without any of the data augmentation layers. It is ready to quantize.
 - stm32ai_main.log is a text log of the events that happened during this run of the model zoo. 
 - Several confusion matrices, as well as plots of the loss & validation accuracy curves during training are included.
 
-For more details on the list of outputs, and the structure of the output directory, please consult section 1.2 of the [main README](./README_OVERVIEW.md)
+For more details on the list of outputs, and the structure of the output directory, please consult section 1.2 of the [main README](./README_OVERVIEW.md).
 
 </details>
 <details open><summary><a href="#6"><b>6. Run tensorboard</b></a></summary><a id="6"></a>
 
-To visualize the training curves logged by tensorboard, go to the output directory (by default, `src/experiments_outputs/<date_time_of_your_run>/`) and run the following command:
+To visualize the training curves logged by tensorboard, go to the output directory (by default, `tf/src/experiments_outputs/<date_time_of_your_run>/`) and run the following command:
 
 ```bash
 tensorboard --logdir logs
@@ -417,7 +394,7 @@ And open the URL `http://localhost:6006` in your browser.
 <details open><summary><a href="#7"><b>7. Run MLFlow</b></a></summary><a id="7"></a>
 
 MLflow is an API for logging parameters, code versions, metrics, and artifacts while running machine learning code and for visualizing results.
-To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command:
+To view and examine the results of multiple trainings, you can simply access the MLFlow Webapp by running the following command from the `./tf/src/experiment_outputs/` directory:
 ```bash
 mlflow ui
 ```

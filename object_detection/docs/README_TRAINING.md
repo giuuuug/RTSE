@@ -39,6 +39,7 @@ language.
 For training, the configuration file should include at least the following sections:
 
 - `general`, describes your project, including project name, directory where to save models, etc.
+- `model`, describes the model type, the model path, the input shape of the model, etc.
 - `operation_mode`, describes the service or chained services to be used
 - `dataset`, describes the dataset you are using, including directory paths, class names, etc.
 - `preprocessing`, specifies the methods you want to use for rescaling and resizing the images.
@@ -63,7 +64,6 @@ The first section of the configuration file is the `general` section that provid
 ```yaml
 general:
   project_name: Pascal_VOC_2012_Demo           # Project name. Optional, defaults to "<unnamed>".
-  model_type: st_ssd_mobilenet_v1   # Name of the model 
   logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
   saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
   #  model_path: <file-path>           # Path to a model file.
@@ -90,42 +90,65 @@ The `global_seed` attribute specifies the value of the seed to use to seed the P
 
 The `gpu_memory_limit` attribute sets an upper limit in GBytes on the amount of GPU memory TensorFlow may use. This is an optional attribute with no default value. If it is not present, memory usage is unlimited. If you have several GPUs, be aware that the limit is only set on logical gpu[0].
 
+<ul><details open><summary><a href="#2-3">2.3 Model specifications</a></summary><a id="2-3"></a>
+
+The `model` section and its attributes are shown below.
+
+```yaml
+model:
+  model_type: st_yoloxn
+  model_name: st_yoloxn
+  #  model_path: <file-path>           # Path to a model file.
+```
+
 The `model_path` attribute is used to specify the path to the model file that you want to fine-tune or resume training
 from. This parameter is essential for loading the pre-trained weights of the model and continuing the training process.
 By providing the path to the model file, you can easily fine-tune the model on a new dataset or resume training from a
 previous checkpoint. This allows you to leverage the knowledge learned by the model on a previous task and apply it to a
 new problem, saving time and resources in the process.
 
-The `model_type` attribute specifies the type of the model architecture that you want to train. It is important to note that only certain models are supported. These models include:
+The `model_type` attribute specifies the type of the model architecture that you want to train, the model family. The `model_name` attribute specifies the exact variant to use within the `model_type` family. It is important to note that only certain models are supported. These models include:
 
-- `ssd_mobilenet_v2_fpnlite`: This is a Single Shot Detector (SSD) architecture that uses a MobileNetV2 backbone and a Feature Pyramid Network (FPN) head. It is designed to be fast and accurate, and is well-suited for use cases where real-time object detection is required.
+- `yolov8n` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv8 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov8 model deployment.
 
-- `st_ssd_mobilenet_v1 `: This is a variant of the SSD architecture that uses a MobileNetV1 backbone and a custom head(ST). It is designed to be robust to scale and orientation changes in the input images.
+- `yolov11n` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv11 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov11 model deployment.
 
-- `yolo_v8` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv8 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov8 model deployment.
-
-- `yolo_v11` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv11 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov11 model deployment.
-
-- `yolo_v5u`: (You Only Look Once version 5 from Ultralytics) is a popular object detection model known for its balance of speed and accuracy. It is part of the YOLO family and is designed to perform real-time object detection. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov5 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov5u model deployment.
+- `yolov5u`: (You Only Look Once version 5 from Ultralytics) is a popular object detection model known for its balance of speed and accuracy. It is part of the YOLO family and is designed to perform real-time object detection. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov5 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov5u model deployment.
  
-- `st_yolo_x`: is an advanced object detection model that builds upon the YOLO (You Only Look Once) series, offering significant improvements in performance and flexibility. Unlike its predecessors, YOLOX can adopt an anchor-free approach, which simplifies the model and enhances its accuracy. It also incorporates advanced techniques such as decoupled head structures for classification and localization, and a more efficient training strategy. YOLOX is designed to achieve high accuracy and speed, making it suitable for real-time applications in various computer vision tasks. This ST variant embeds various tuning capabilities from the yaml configuration file.
+- `st_yoloxn`: is an advanced object detection model that builds upon the YOLO (You Only Look Once) series, offering significant improvements in performance and flexibility. Unlike its predecessors, YOLOX can adopt an anchor-free approach, which simplifies the model and enhances its accuracy. It also incorporates advanced techniques such as decoupled head structures for classification and localization, and a more efficient training strategy. YOLOX is designed to achieve high accuracy and speed, making it suitable for real-time applications in various computer vision tasks. This ST variant embeds various tuning capabilities from the yaml configuration file.
  
-- `st_yolo_lc_v1`: This is a lightweight version of the tiny yolo v2 object detection algorithm. It was optimized to work well on embedded devices with limited computational resources.
+- `st_yololcv1`: This is a lightweight version of the tiny yolo v2 object detection algorithm. It was optimized to work well on embedded devices with limited computational resources.
 
-- `tiny_yolo_v2`: This is a lightweight version of the YOLO (You Only Look Once) object detection algorithm. It is designed to work well on embedded devices with limited computational resources.
+- `yolov2t`: This is a lightweight version of the YOLO (You Only Look Once) object detection algorithm. It is designed to work well on embedded devices with limited computational resources.
 
+The exhaustive list of `model_type` and corresponding `model_name` is the following: 
+
+|`model_type`           | possible `model_name`| 
+|-----------------------|----------------------|
+| `yolov8n`             | X         |
+| `yolov11n`            | X         |
+| `yolov5u`             | X         |
+| `st_yoloxn`           | `st_yoloxn`, `st_yoloxn_d033_w025`, `st_yoloxn_d100_w025`, `st_yoloxn_d050_w040`        |
+| `st_yololcv1`         | `st_yololcv1`|
+| `yolov2t`             |  `yolov2t`   |
+| `yolov4`              | X            |
+| `yolov4t`             | X            |
+| `face_detect_front`   | X            |
+
+When no `model_name` attribute is possible, `model_path` is to be used.
 It is important to note that each model type has specific requirements in terms of input image size, output size of the
 head and/or backbone, and other parameters. Therefore, it is important to choose the appropriate model type for your
 specific use case, and to configure the training process accordingly.
 
 </details></ul>
-<ul><details open><summary><a href="#2-3">2.3 Dataset specification</a></summary><a id="2-3"></a>
+<ul><details open><summary><a href="#2-4">2.4 Dataset specification</a></summary><a id="2-4"></a>
 
 Information about the dataset you want to use is provided in the `dataset` section of the configuration file, as shown in the YAML code below.
 
 ```yaml
 dataset:
-  dataset_name: Pascal_VOC_2012                                    # Dataset name. Optional, defaults to "<unnamed>".
+  format: pascal_voc
+  dataset_name: pascal_voc                                    # Dataset name. Optional, defaults to "<unnamed>".
   class_names: [ aeroplane,bicycle,bird,boat,bottle,bus,car,cat,chair,cow,diningtable,dog,horse,motorbike,person,pottedplant,sheep,sofa,train,tvmonitor ] # Names of the classes in the dataset.
   training_path: <training-set-root-directory>               # Path to the root directory of the training set.
   validation_path: <validation-set-root-directory>           # Path to the root directory of the validation set.
@@ -150,7 +173,7 @@ If a `test_path` is not provided to evaluate the model accuracy after training a
 accuracy on new data. Using a separate test set also helps to ensure that the model has not overfit to the validation set during training.
 
 </details></ul>
-<ul><details open><summary><a href="#2-4">2.4 Dataset preprocessing</a></summary><a id="2-4"></a>
+<ul><details open><summary><a href="#2-5">2.5 Dataset preprocessing</a></summary><a id="2-5"></a>
 
 The images from the dataset need to be preprocessed before they are presented to the network. This includes rescaling
 and resizing, as illustrated in the YAML code below.
@@ -189,7 +212,7 @@ the dataset for object detection, as it ensures that the annotations accurately 
 enables the model to learn from the annotated data.
 
 </details></ul>
-<ul><details open><summary><a href="#2-5">2.5 Data augmentation</a></summary><a id="2-5"></a>
+<ul><details open><summary><a href="#2-6">2.6 Data augmentation</a></summary><a id="2-6"></a>
 
 Data augmentation is a crucial technique for improving the performance of object detection models, especially when the
 dataset is too small. The data_augmentation section of the configuration file specifies the data augmentation functions
@@ -221,7 +244,7 @@ input images and the modification of the annotations file to ensure that the mod
 representative data.
 
 </details></ul>
-<ul><details open><summary><a href="#2-6">2.6 Apply post-processing</a></summary><a id="2-6"></a>
+<ul><details open><summary><a href="#2-7">2.7 Apply post-processing</a></summary><a id="2-7"></a>
 
 Apply post-processing by modifying the **postprocessing** parameters in **[user_config.yaml](../user_config.yaml)** as follows:
 
@@ -230,11 +253,11 @@ Apply post-processing by modifying the **postprocessing** parameters in **[user_
 - `IoU_eval_thresh` - A *float* between 0.0 and 1.0, IoU threshold to calculate TP and FP.
 
 </details></ul>
-<ul><details open><summary><a href="#2-7">2.7 Loading a model</a></summary><a id="2-7"></a>
+<ul><details open><summary><a href="#2-8">2.8 Loading a model</a></summary><a id="2-8"></a>
 
 Information about the model you want to train is provided in the `training` section of the configuration file.
 
-The YAML code below shows how you can use a st_ssd_mobilenet_v1 model from the Model Zoo.
+The YAML code below shows how you can use a st_yoloxn model from the Model Zoo.
 
 ```yaml
 training:
@@ -257,7 +280,7 @@ If `pretrained_weights` was set to "None", no pretrained weights would be loaded
 start *from scratch*, i.e. from randomly initialized weights.
 
 </details></ul>
-<ul><details open><summary><a href="#2-8">2.8 Training setup</a></summary><a id="2-8"></a>
+<ul><details open><summary><a href="#2-9">2.9 Training setup</a></summary><a id="2-9"></a>
 
 The training setup is described in the `training` section of the configuration file, as illustrated in the example
 below.
@@ -295,7 +318,7 @@ All the TensorFlow optimizers can be used in the `optimizer` subsection. All the
 A variety of learning rate schedulers are provided with the Model Zoo. If you want to use one of them, just include it in the `callbacks` subsection. Refer to [the learning rate schedulers README](../../common/training/lr_schedulers_README.md) for a description of the available callbacks and learning rate plotting utility.
 
 </details></ul>
-<ul><details open><summary><a href="#2-9">2.9 Hydra and MLflow settings</a></summary><a id="2-9"></a>
+<ul><details open><summary><a href="#2-10">2.10 Hydra and MLflow settings</a></summary><a id="2-10"></a>
 
 The `mlflow` and `hydra` sections must always be present in the YAML configuration file. The `hydra` section can be used
 to specify the name of the directory where experiment directories are saved and/or the pattern used to name experiment
@@ -306,14 +329,14 @@ they are based on the date and time of the run.
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -323,10 +346,10 @@ mlflow:
 To launch your model training using a real dataset, run the following command from the **src/** folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name training_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name training_config.yaml
 ```
 
-The trained h5 model can be found in the corresponding **experiments_outputs/** folder.
+The trained .keras model can be found in the corresponding **experiments_outputs/** folder.
 
 </details>
 <details open><summary><a href="#4"><b>4. Visualise your results</b></a></summary><a id="4"></a>
@@ -366,16 +389,18 @@ And open the given IP address in your browser.
 
 You may want to resume a training that you interrupted or that crashed.
 
-When running a training, the model is saved at the end of each epoch in the **'saved_models'** directory that is under the experiment directory (see section "2.2 Output directories and files"). The model file is named 'last_trained_model.h5'.
+When running a training, the model is saved at the end of each epoch in the **'saved_models'** directory that is under the experiment directory (see section "2.2 Output directories and files"). The model file is named 'last_trained_model.keras'.
 
 To resume a training, you first need to choose the experiment you want to restart from. Then, set
-the `resume_training_from` attribute of the 'training' section to the path to the 'last_trained_model.h5' file of the
+the `resume_training_from` attribute of the 'training' section to the path to the 'last_trained_model.keras' file of the
 experiment. An example is shown below.
 
 ```yaml
 operation_mode: training
 
 dataset:
+  format: tfs
+  dataset_name: coco
   training_path: <training-set-root-directory>
   validation_split: 0.2
   test_path: <test-set-root-directory>
@@ -393,10 +418,10 @@ training:
       monitor: val_accuracy
       factor: 0.1
       patience: 10
-  resume_training_from: <path to the 'last_trained_model.h5' file of the interrupted/crashed training>
+  resume_training_from: <path to the 'last_trained_model.keras' file of the interrupted/crashed training>
 ```
 
-When setting the `resume_training_from` attribute, the `model:` subsection of the `training:` section and the `model_path` attribute of the `general:` section should not be used. An error will be thrown if you do so.
+When setting the `resume_training_from` attribute, the `model:` subsection of the `training:` section and the `model_path` attribute of the `model:` section should not be used. An error will be thrown if you do so.
 
 The configuration file of the training you are resuming should be reused as is, the only exception being the number of
 epochs. If you make changes to the dropout rate, the frozen layers or the optimizer, they will be ignored and the
@@ -406,21 +431,21 @@ However, they may lead to unexpected results.
 </details></ul>
 <ul><details open><summary><a href="#5-2">5.2 Train, quantize, benchmark, and evaluate your models</a></summary><a id="5-2"></a>
 
-In case you want to train and quantize a model, you can either launch the training operation mode followed by the quantization operation on the trained model (please refer to the quantization **[README.md](./README_QUANTIZATION.md)** that describes in detail the quantization part) or you can use chained services like launching [chain_tqe](../src/config_file_examples/chain_tqe_config.yaml) example with the command below:
+In case you want to train and quantize a model, you can either launch the training operation mode followed by the quantization operation on the trained model (please refer to the quantization **[README.md](./README_QUANTIZATION.md)** that describes in detail the quantization part) or you can use chained services like launching [chain_tqe](../config_file_examples/chain_tqe_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_tqe_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_tqe_config.yaml
 ```
 
-This specific example trains a MobileNet v2 model with ImageNet pre-trained weights, fine-tunes it by retraining the latest seven layers but the fifth one (this only as an example), and quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model.
+This specific example trains a ST YOLOXn model , fine-tunes it by retraining the latest seven layers but the fifth one (this only as an example), and quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model.
 
-In case you also want to execute a benchmark on top of training and quantize services, it is recommended to launch the chain service called [chain_tqeb](../src/config_file_examples/chain_tqeb_config.yaml) that stands for train, quantize, evaluate, benchmark like the example with the command below:
+In case you also want to execute a benchmark on top of training and quantize services, it is recommended to launch the chain service called [chain_tqeb](../config_file_examples/chain_tqeb_config.yaml) that stands for train, quantize, evaluate, benchmark like the example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_tqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_tqeb_config.yaml
 ```
 
-This specific example uses the "Bring Your Own Model" feature using `model_path`, then fine-tunes the initial model by retraining all the layers but the twenty-first (as an example), benchmarks the float model on the STM32H747I-DISCO board using the STM32Cube.AI developer cloud, quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model and benchmarking it.
+This specific example uses the "Bring Your Own Model" feature using `model_path`, then fine-tunes the initial model by retraining all the layers but the twenty-first (as an example), benchmarks the float model on the STM32H747I-DISCO board using the STEdgeAI developer cloud, quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model and benchmarking it.
 
 </details></ul>
 </details>

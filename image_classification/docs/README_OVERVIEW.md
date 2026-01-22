@@ -1,7 +1,7 @@
 
 # Image Classification STM32 Model Zoo
 
-Minimalistic YAML files are available [here](../src/config_file_examples/) to experiment with specific services. All pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) come with their configuration `.yaml` files used to generate them. These are excellent starting points for your projects!
+Minimalistic YAML files are available [here](../config_file_examples/) to experiment with specific services. All pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) come with their configuration `.yaml` files used to generate them. These are excellent starting points for your projects!
 
 # Table of Contents
 
@@ -9,14 +9,15 @@ Minimalistic YAML files are available [here](../src/config_file_examples/) to ex
 2. [Image Classification Tutorial](#2)
    - [2.1 Choose the operation mode](#2-1)
    - [2.2 Global settings](#2-2)
-   - [2.3 Dataset specification](#2-3)
-   - [2.4 Apply image preprocessing](#2-4)
-   - [2.5 Use data augmentation](#2-5)
-   - [2.6 Set the training parameters](#2-6)
-   - [2.7 Model quantization](#2-7)
-   - [2.8 Benchmark the model](#2-8)
-   - [2.9 Deploy the model](#2-9)
-   - [2.10 Hydra and MLflow settings](#2-10)
+   - [2.3 Model specification](#2-3) 
+   - [2.4 Dataset specification](#2-4)
+   - [2.5 Apply image preprocessing](#2-5)
+   - [2.6 Use data augmentation](#2-6)
+   - [2.7 Set the training parameters](#2-7)
+   - [2.8 Model quantization](#2-8)
+   - [2.9 Benchmark the model](#2-9)
+   - [2.10 Deploy the model](#2-10)
+   - [2.11 Hydra and MLflow settings](#2-11)
 3. [Run the image classification chained service](#3)
 4. [Visualize the chained services results](#4)
    - [4.1 Saved results](#4-1)
@@ -96,7 +97,6 @@ general:
    project_name: tf_flowers           # Project name. Optional, defaults to "<unnamed>".
    logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
    saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-#  model_path: <file-path>           # Path to a model file.
    global_seed: 123                  # Seed used to seed random generators (an integer). Optional, defaults to 123.
    deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
    display_figures: True             # Enable/disable the display of figures (training learning curves and confusion matrices).
@@ -111,11 +111,30 @@ Even when random generators are seeded, it is often difficult to exactly reprodu
 
 The `gpu_memory_limit` attribute sets an upper limit in GBytes on the amount of GPU memory TensorFlow may use. This is an optional attribute with no default value. If it is not present, memory usage is unlimited. If you have several GPUs, be aware that the limit is only set on logical gpu[0].
 
-The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .h5 or .onnx models. 
+The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .keras or .onnx models. 
 This parameter may accelerate the tflite model evaluation in the following operation modes:  `evaluation` (if a .tflite is specified in `model_path`), `chain_tqeb`, `chain_eqe`, `chain_tqe` and `chain_eqeb` (if the quantizer is the TFlite_converter). 
 However, the acceleration depends on your system resources.
 
-The `model_path` attribute is utilized to indicate the path to the model file that you wish to use for the selected operation mode. The accepted formats for `model_path` are listed in the table below:
+</details></ul>
+<ul><details open><summary><a href="#2-3">2.3 Model specification</a></summary><a id="2-3"></a>
+
+The `model` section and its attributes are described below.
+
+```yaml
+model:
+  model_path: # path to the model
+  model_name: mobilenetv2_a100 # name of an already existing model in the ST storage
+  model_type: # not used in image classification with tensorflow
+  input_shape: (224, 224, 3) # Optional, default value is (224, 224, 3)
+  pretrained: True                    
+
+```
+`input_shape` specifies the input tensor dimension. With tensorflow, channel is to be in the last position. Please note that because of memory limitations, neural networks requiring more than QVGA input format are not supported on NUCLEO-H743ZI2.
+The `pretrained` attribute should be set to "True" if you want to load the weights pretrained on the imagenet dataset and do a transfer learning type of training. 
+If `pretrained` is "False", no pretrained weights are loaded in the model and the training starts from scratch, i.e., from randomly initialized weights.
+By default, no pretrained weights are loaded.
+
+The `model_path` attribute is used to indicate the path to the model file that you wish to use for the selected operation mode. The accepted formats for `model_path` are listed in the table below:
 
 | Operation mode | `model_path`                                     |
 |:---------------|:-------------------------------------------------|
@@ -128,13 +147,13 @@ The `model_path` attribute is utilized to indicate the path to the model file th
 If you are using an operation mode that involves training, you can use the `model_path` attribute to train your own custom model instead of using a model from the Model Zoo. This is explained in detail in the [readme](./README_TRAINING.md) file for the train service. However, in this tutorial, the `model_path` attribute is not used since we are using a pre-trained model from the Model Zoo.
 
 </details></ul>
-<ul><details open><summary><a href="#2-3">2.3 Dataset specification</a></summary><a id="2-3"></a>
+<ul><details open><summary><a href="#2-4">2.4 Dataset specification</a></summary><a id="2-4"></a>
 
 The `dataset` section and its attributes are shown in the YAML code below.
 
 ```yaml
 dataset:
-   dataset_name: flowers                                      # Dataset name. Optional, defaults to "<unnamed>".
+   dataset_name: tf_flowers                                   # Dataset name. Optional, defaults to "<unnamed>".
    class_names: [daisy, dandelion, roses, sunflowers, tulips] # Names of the classes in the dataset.
    training_path: ../datasets/flower_photos                   # Path to the root directory of the training set.
    validation_path: <validation-set-root-directory>           # Path to the root directory of the validation set.
@@ -146,9 +165,9 @@ dataset:
    seed: 123                                                  # Random generator seed used when splitting a dataset.
 ```
 
-The `dataset_name` attribute is optional unless you want to use the EMNIST, CIFAR-10, and CIFAR-100 datasets provided with the Model Zoo. In this case, you need to set it to either 'emnist', 'cifar10', or 'cifar100'.
+The `dataset_name` attribute is optional unless you want to use the EMNIST, CIFAR-10, and CIFAR-100 datasets provided with the Model Zoo. In this case, you need to set it to either 'emnist_byclass', 'cifar10', or 'cifar100'.
 
-The `class_names` attribute specifies the classes in the dataset. This information must be provided in the YAML file. If the `class_names` attribute is absent, the `classes_name_file` argument can be used as an alternative, pointing to a text file containing the class names. Alternatively, the class names can be deduced from the folder names of each class.
+The `class_names` attribute specifies the classes in the dataset. This information must be provided in the YAML file. If the `class_names` attribute is absent, the `classes_file_path` argument can be used as an alternative, pointing to a text file containing the class names. Alternatively, the class names can be deduced from the folder names of each class.
 
 When working with a dataset for the first time, we suggest setting the `check_image_files` attribute to True. This will enable the system to load each image file and identify any corrupt, unsupported, or non-image files. The path to any problematic files will be reported. Once you have verified the cleanliness of your dataset or have cleaned it up, you can set `check_image_files` to False to avoid any potential run time penalties.
 
@@ -159,7 +178,7 @@ The `validation_split` attribute specifies the training/validation set size rati
 The `quantization_path` attribute is used to specify a dataset for the quantization process. If this attribute is not provided and a training set is available, the training set is used for the quantization. However, training sets can be quite large, and the quantization process can take a long time to run. To avoid this issue, you can set the `quantization_split` attribute to use only a portion of the dataset for quantization.
 
 </details></ul>
-<ul><details open><summary><a href="#2-4">2.4 Apply image preprocessing</a></summary><a id="2-4"></a>
+<ul><details open><summary><a href="#2-5">2.5 Apply image preprocessing</a></summary><a id="2-5"></a>
 
 Images need to be rescaled and resized before they can be used. This is specified in the 'preprocessing' section that is required in all the operation modes.
 
@@ -192,7 +211,7 @@ If some images in your dataset are larger than the resizing size and some others
 The `color_mode` attribute can be set to either *"grayscale"*, *"rgb"*, or *"rgba"*.
 
 </details></ul>
-<ul><details open><summary><a href="#2-5">2.5 Use data augmentation</a></summary><a id="2-5"></a>
+<ul><details open><summary><a href="#2-6">2.6 Use data augmentation</a></summary><a id="2-6"></a>
 
 The data augmentation functions to apply to the input images during training are specified in the optional `data_augmentation` section of the configuration file. They are only applied to the images during training.
 
@@ -222,20 +241,14 @@ The data augmentation functions are applied to the input images in their order o
 
 Please refer to [the data augmentation documentation](../../common/data_augmentation/README.md) for a list of functions that are available and the transforms they apply to the input images.
 </details></ul>
-<ul><details open><summary><a href="#2-6">2.6 Set the training parameters</a></summary><a id="2-6"></a>
+<ul><details open><summary><a href="#2-7">2.7 Set the training parameters</a></summary><a id="2-7"></a>
 
-A 'training' section is required in all the operation modes that include training, namely 'training', 'chain_tqeb', and 'chain_tqe'.
+A `training` section is required in all the operation modes that include training, namely 'training', 'chain_tqeb', and 'chain_tqe'.
 
-In this tutorial, we picked a MobileNet V2 model for transfer learning. The model weights are pre-trained on the ImageNet dataset, a large dataset consisting of 1.4M images and 1000 classes. As an example, we will use a MobileNet V2 with alpha = 0.35. To do so, we will need to configure the model section in [user_config.yaml](../user_config.yaml) as follows:
+In this tutorial, we picked a MobileNet V2 model for transfer learning. The model weights are pre-trained on the imagenet dataset, a large dataset consisting of 1.4M images and 1000 classes. As an example, we will use a MobileNet V2 with alpha = 0.35. To do so, we will need to configure the model section in [user_config.yaml](../user_config.yaml) as follows:
 
 ```yaml
 training:
-   model:
-      name: mobilenet                     
-      version: v2
-      alpha: 0.35
-      input_shape: (128, 128, 3)
-      pretrained_weights: imagenet
    batch_size: 64
    epochs: 150
    dropout: 0.3             # Insert a dropout layer in the model and set the rate to 0.3
@@ -258,18 +271,13 @@ training:
          patience: 60
 ```
 
-The `model` subsection is used to specify a model that is available with the Model Zoo:
-- The `name` and `input_shape` attributes must always be present. Please note that because of memory limitations, neural networks requiring more than QVGA input format are not supported on NUCLEO-H743ZI2. 
-- Additional attributes are needed depending on the type of model. For example, an `alpha` attribute is required for a MobileNet model and a `depth` attribute is required for a ResNet model. 
-- The optional `pretrained_weights` attribute can be used to load pretrained weights in the model before it gets trained. By default, no pretrained weights are loaded.
-
 The `batch_size` and `epochs` attributes are mandatory.
 
 The `dropout_rate` attribute is optional. By default, no dropout layer is inserted in the model.
 
 All the Keras optimizers are supported. If you are not passing any argument to the optimizer, you may write it on one line. For example: "optimizer: Adam".
 
-The optional `frozen_layers` attribute is used to make some layers of the model non-trainable. Together with the `pretrained_weights` attribute of the `model` subsection, it is useful when a transfer learning approach is used to train the model. Another attribute of the `model` subsection called `pretrained_weights` is also available to load the weights from another model (not shown in the YAML code above). Transfer learning is covered in the "Transfer learning" section of the documentation.
+The optional `frozen_layers` attribute is used to make some layers of the model non-trainable. Together with the `pretrained_weights` attribute of the `model` subsection, it is useful when a transfer learning approach is used to train the model. Another attribute of the `model` subsection called `pretrained_weights` is also available to load the weights from another model (not shown in the YAML code above). Transfer learning is covered in the "Transfer learning" section of the documentation [README](./README_TRAINING.md).
 
 The `callbacks` subsection is optional. All the Keras callbacks are supported. Note that several callbacks are built-in and cannot be redefined, including ModelCheckpoint, TensorBoard, and CSVLogger. 
 
@@ -278,7 +286,7 @@ A variety of learning rate schedulers are provided with the Model Zoo. If you wa
 The best model obtained at the end of the training is saved in the 'experiments_outputs/\<date-and-time\>/saved_models' directory and is called 'best_model.h5' (see section <a href="#4">visualize the chained services results</a>). Make sure not to use the 'best_augmentation_model.h5' file as it includes the rescaling and data augmentation layers
 
 </details></ul>
-<ul><details open><summary><a href="#2-7">2.7 Model quantization</a></summary><a id="2-7"></a>
+<ul><details open><summary><a href="#2-8">2.8 Model quantization</a></summary><a id="2-8"></a>
 
 Configure the quantization section in [user_config.yaml](../user_config.yaml) as follows:
 
@@ -293,36 +301,36 @@ quantization:
    optimize: True                      # Optional, defaults to False.
    target_opset: 17                    # Optional, defaults to 17.
    export_dir: quantized_models        # Optional, defaults to "quantized_models".
-   extra_options: calib_moving_average # Optional, defaults to None.
+   onnx_extra_options: 
+      CalibMovingAverage: True         # Optional, default to False
 ```
 
-This section is used to configure the quantization process, which optimizes the model for efficient deployment on embedded devices by reducing its memory usage (Flash/RAM) and accelerating its inference time, with minimal degradation in model accuracy. The `quantizer` attribute expects the value `TFlite_converter`, which is used to convert the trained model weights from float to integer values and transfer the model to a TensorFlow Lite format. Alternatively, if a float ONNX model is to be quantized, the value for the `quantizer` should be set to `onnx_quantizer`.
+This section is used to configure the quantization process, which optimizes the model for efficient deployment on embedded devices by reducing its memory usage (Flash/RAM) and accelerating its inference time, with minimal degradation in model accuracy. The `quantizer` attribute expects the value `TFlite_converter`, which is used to convert the trained model weights from float to integer values and transfer the model to a TensorFlow Lite format. Alternatively, `quantizer` could also be set to `onnx_quantizer` if one wants to use onnx-runtime library.
 
 The `quantization_type` attribute only allows the value "PTQ," which stands for Post Training Quantization. To specify the quantization type for the model input and output, use the `quantization_input_type` and `quantization_output_type` attributes, respectively. The `quantization_input_type` attribute is a string that can be set to "int8", "uint8," or "float" to represent the quantization type for the model input. Similarly, the `quantization_output_type` attribute is a string that can be set to "int8", "uint8," or "float" to represent the quantization type for the model output. These values are not accounted for when using `onnx_quantizer` as both model input and output types are float and only the weights and activations are quantized.
 
-The `granularity` is either "per_channel" or "per_tensor". If the parameter is not set, it will default to "per_channel". 'per channel' means all weights contributing to a given layer output channel are quantized with one unique (scale, offset) couple.
-The alternative is 'per tensor' quantization which means that the full weight tensor of a given layer is quantized with one unique (scale, offset) couple. 
-It is obviously more challenging to preserve original float model accuracy using 'per tensor' quantization. But this method is particularly well suited to fully exploit STM32MP2 platforms HW design.
+The `granularity` attribute expects `per_channel` or `per_tensor` value. If the parameter is not set, it will default to `per_channel`. `per_channel` means all weights contributing to a given layer output channel are quantized with one unique (scale, offset) couple.
+The alternative is `per_tensor` quantization which means that the full weight tensor of a given layer is quantized with one unique (scale, offset) couple. 
+It is obviously more challenging to preserve original floating-point model accuracy using `per_tensor` quantization. But this method is particularly well suited to fully exploit STM32MP2 platforms HW design.
 
-Some topologies can be slightly optimized to become "per_tensor" quantization friendly. Therefore, we propose to optimize the model to improve the "per-tensor" quantization. This is controlled by the `optimize` parameter which is only used with TFlite_converter. By default, it is False and no optimization is applied. When set to True, some modifications are applied to the original network. Please note that these optimizations only apply when granularity is "per_tensor". To finish, some topologies cannot be optimized. So even if `optimize` is set to True, there is no guarantee that "per_tensor" quantization will preserve the float model accuracy for all the topologies.
+Some topologies can be slightly optimized to become `per_tensor` quantization friendly. Therefore, we propose to optimize the model to improve the `per_tensor` quantization. This is controlled by the `optimize` parameter which is only used with TFlite_converter. By default, it is False and no optimization is applied. When set to True, some modifications are applied to the original network. Please note that these optimizations only apply when granularity is `per_tensor`. To finish, some topologies cannot be optimized. So even if `optimize` is set to True, there is no guarantee that `per_tensor` quantization will preserve the float model accuracy for all the topologies.
 
-The `target_opset` is an integer parameter. This is only needed or accounted for when using `onnx_quantizer` and is ignored when using `TFlite_converter`. Before doing the ONNX quantization, the ONNX opset of the model is updated to the target_opset. If no value is provided, a default value of 17 is used. The `extra_options` parameter can only be set to "calib_moving_average" for now, and only applies to ONNX quantization. This option allows for min and max smoothing during activation calibration. We observed that it can sometimes help filter some activations outliers which translates into a lower quantization noise on small amplitude values which in the end can have a positive effect on network accuracy or precision.
+The `target_opset` is an integer parameter. This is only needed or accounted for when using `onnx_quantizer` and is ignored when using `TFlite_converter`. Before doing the ONNX quantization, the ONNX opset of the model is updated to the `target_opset`. If no value is provided, a default value of 17 is used. The `onnx_extra_options` sub-section allows to set various options for ONNX quantization. In the current example, it can be used to enable `CalibMovingAverage`. This option allows for min and max smoothing during activation calibration. We observed that it can sometimes help filter some activations outliers which translates into a lower quantization noise on small amplitude values which in the end can have a positive effect on network accuracy. There are many other options that can be enabled for ONNX quantization. For more details, please refer to the [quantization tool README](./README_QUANTIZATION_TOOL.md).
 
-By default, the quantized model is saved in the 'quantized_models' directory under the 'experiments_outputs' directory. You may use the optional `export_dir` attribute to change the name of this directory.
+By default, the quantized model is saved in the `quantized_models` directory under the `experiments_outputs` directory. You may use the optional `export_dir` attribute to change the name of this directory.
 
 </details></ul>
-<ul><details open><summary><a href="#2-8">2.8 Benchmark the model</a></summary><a id="2-8"></a>
+<ul><details open><summary><a href="#2-9">2.9 Benchmark the model</a></summary><a id="2-9"></a>
 
-The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target devices. To use this feature, set the `on_cloud` attribute to True. Alternatively, you can use [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to benchmark your model and estimate its footprints for STM32 target devices locally. To do this, make sure to add the path to the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to False.
+The [STEdgeAI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target devices. To use this feature, set the `on_cloud` attribute to True. Alternatively, you can use [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to benchmark your model and estimate its footprints for STM32 target devices locally. To do this, make sure to add the path to the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to False.
 
-The `version` attribute specifies the **STM32Cube.AI** version used to benchmark the model, e.g., 10.0.0, and the `optimization` defines the optimization used to generate the C model, options: "balanced", "time", "ram".
+The `optimization` defines the optimization used to generate the C model, options: `balanced`, `time`, `ram`.
 
 The `board` attribute is used to provide the name of the STM32 board to benchmark the model on. The available boards are 'STM32N6570-DK', 'STM32H747I-DISCO', 'STM32H7B3I-DK', 'STM32F469I-DISCO', 'B-U585I-IOT02A', 'STM32L4R9I-DISCO', 'NUCLEO-H743ZI2', 'STM32H735G-DK', 'STM32F769I-DISCO', 'NUCLEO-G474RE', 'NUCLEO-F401RE', and 'STM32F746G-DISCO'.
 
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -334,12 +342,12 @@ benchmarking:
 The `path_to_cubeIDE` attribute is for the deployment service which is not part of the chain `chain_tqeb` used in this tutorial.
 
 </details></ul>
-<ul><details open><summary><a href="#2-9">2.9 Deploy the model</a></summary><a id="2-9"></a>
+<ul><details open><summary><a href="#2-10">2.10 Deploy the model</a></summary><a id="2-10"></a>
 
 In this tutorial, we are using the `chain_tqeb` toolchain, which does not include the deployment service. However, if you want to deploy the model after running the chain, you can do so by referring to the deployment README and modifying the `deployment_config.yaml` file or by setting the `operation_mode` to `deploy` and modifying the `user_config.yaml` file as described below:
 
 ```yaml
-general:
+model:
    model_path: <path-to-a-TFlite-model-file>     # Path to the model file to deploy
 
 dataset:
@@ -347,7 +355,6 @@ dataset:
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -362,9 +369,9 @@ deployment:
     board: STM32H747I-DISCO
 ```
 
-In the `general` section, users must provide the path to the TFlite model file that they want to deploy using the `model_path` attribute.
+In the `model` section, users must provide the path to the quantized tflite or ONNX QDQ to deploy using the `model_path` attribute.
 
-The `dataset` section requires users to provide the names of the classes using the `class_names` or `classes_name_file` attribute. If you use the `classes_file_path`, ensure the classes are listed in alphabetical order or according to the dataset's convention.
+The `dataset` section requires users to provide the names of the classes using the `class_names` or `classes_file_path` attribute. If you use the `classes_file_path`, ensure the classes are listed in alphabetical order or according to the dataset's convention.
 
 This version maintains clarity and conciseness while explaining the different ways to specify class names.
 The `tools` section includes information about the stedgeai toolchain, such as the version, optimization level, and path to the `stedgeai.exe` file.
@@ -377,21 +384,21 @@ Please refer to the readme below for a complete deployment tutorial:
 - on MPU: [README_STM32MPU.md](./README_DEPLOYMENT_MPU.md)
 
 </details></ul>
-<ul><details open><summary><a href="#2-10">2.10 Hydra and MLflow settings</a></summary><a id="2-10"></a>
+<ul><details open><summary><a href="#2-11">2.11 Hydra and MLflow settings</a></summary><a id="2-11"></a>
  
 The `mlflow` and `hydra` sections must always be present in the YAML configuration file. The `hydra` section can be used to specify the name of the directory where experiment directories are saved and/or the pattern used to name experiment directories. In the YAML code below, it is set to save the outputs as explained in the section <a href="#4">visualize the chained services results</a>:
 
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 </details></ul>
 </details>
@@ -415,7 +422,7 @@ Every time you run the Model Zoo, an experiment directory is created that contai
 
 Experiment directories are managed using the Hydra Python package. Refer to [Hydra Home](https://hydra.cc/) for more information about this package.
 
-By default, all the experiment directories are under the <MODEL-ZOO-ROOT>/image_classification/src/experiments_outputs directory and their names follow the "%Y_%m_%d_%H_%M_%S" pattern.
+By default, all the experiment directories are under the <MODEL-ZOO-ROOT>/image_classification/tf/src/experiments_outputs directory and their names follow the "%Y_%m_%d_%H_%M_%S" pattern.
 
 This is illustrated in the figure below.
 
@@ -433,33 +440,33 @@ This is illustrated in the figure below.
                                           +--- training_curves.png
                                           +--- float_model_confusion_matrix_validation_set.png
                                           |
-      +-----------------------------------+-----------------------------------+------------+
-      |                                   |                                   |            |
-      |                                   |                                   |            |
- saved_models                      quantized_models                         logs        .hydra
-      |                                   |                                   |            |
-      +--- best_augmented_model.h5        +--- quantized_model.tflite    TensorBoard     Hydra
-      +--- last_augmented_model.h5        + or a .onnx QDQ model            files        files
-      +--- best_model.h5                  
+      +-----------------------------------+--------------------------------------+------------+
+      |                                   |                                      |            |
+      |                                   |                                      |            |
+ saved_models                      quantized_models                             logs        .hydra
+      |                                   |                                      |            |
+      +--- best_augmented_model.keras        +--- quantized_model.tflite    TensorBoard     Hydra
+      +--- last_augmented_model.keras        + or a .onnx QDQ model            files        files
+      +--- best_model.keras                  
 ```
 
 The file named 'stm32ai_main.log' under each experiment directory is the log file saved during the execution of the 'stm32ai_main.py' script. The contents of the other files saved under an experiment directory are described in the table below.
 
-| File                                          | Directory        | Contents                                                                                           |
-|:----------------------------------------------|:-----------------|:---------------------------------------------------------------------------------------------------|
-| best_augmented_model.h5                       | saved_models     | Best model saved during training, rescaling and data augmentation layers included (Keras)          |
-| last_augmented_model.h5                       | saved_models     | Last model saved at the end of a training, rescaling and data augmentation layers included (Keras) |
-| best_model.h5                                 | saved_models     | Best model obtained at the end of a training (Keras)                                               |
-| quantized_model.tflite                        | quantized_models | Quantized model (TFlite)                                                                           |
-| {model_name}.onnx                             | quantized_models | Quantized model ONNX QDQ                                                                           |  
-| training_metrics.csv                          | metrics          | Training metrics CSV including epochs, losses, accuracies and learning rate                        |
-| training_curves.png                           | metrics          | Training learning curves (losses and accuracies)                                                   |
-| float_model_confusion_matrix_test_set.png     | metrics          | Float model confusion matrix                                                                       | 
-| quantized_model_confusion_matrix_test_set.png | metrics          | Quantized model confusion matrix                                                                   |
+| File                                             | Directory        | Contents                                                                                           |
+|:-------------------------------------------------|:-----------------|:---------------------------------------------------------------------------------------------------|
+| best_augmented_model.keras                       | saved_models     | Best model saved during training, rescaling and data augmentation layers included (Keras)          |
+| last_augmented_model.keras                       | saved_models     | Last model saved at the end of a training, rescaling and data augmentation layers included (Keras) |
+| best_model.keras                                 | saved_models     | Best model obtained at the end of a training (Keras)                                               |
+| quantized_model.tflite                           | quantized_models | Quantized model (TFlite)                                                                           |
+| {model_name}.onnx                                | quantized_models | Quantized model ONNX QDQ                                                                           |  
+| training_metrics.csv                             | metrics          | Training metrics CSV including epochs, losses, accuracies and learning rate                        |
+| training_curves.png                              | metrics          | Training learning curves (losses and accuracies)                                                   |
+| float_model_confusion_matrix_test_set.png        | metrics          | Float model confusion matrix                                                                       | 
+| quantized_model_confusion_matrix_test_set.png    | metrics          | Quantized model confusion matrix                                                                   |
 
 All the directory names, including the naming pattern of experiment directories, can be changed using the configuration file. The names of the files cannot be changed.
 
-The models in the 'best_augmented_model.h5' and 'last_augmented_model.h5' Keras files contain rescaling and data augmentation layers. These files can be used to resume a training that you interrupted or that crashed. This will be explained in the training service [README](./README_TRAINING.md). These model files are not intended to be used outside of the Model Zoo context.
+The models in the 'best_augmented_model.keras' and 'last_augmented_model.keras' Keras files contain rescaling and data augmentation layers. These files can be used to resume a training that you interrupted or that crashed. This will be explained in the training service [README](./README_TRAINING.md). These model files are not intended to be used outside of the Model Zoo context.
 
 <ul><details open><summary><a href="#4-1">4.1 Saved results</a></summary><a id="4-1"></a>
 
@@ -484,7 +491,7 @@ This will start a server and its address will be displayed. Use this address in 
 </details></ul>
 <ul><details open><summary><a href="#4-3">4.3 Run ClearML</a></summary><a id="4-3"></a>
 
-ClearML is an open-source tool used for logging and tracking machine learning experiments. It allows you to record metrics, parameters, and results, making it easier to monitor and compare diffrent runs.
+ClearML is an open-source tool used for logging and tracking machine learning experiments. It allows you to record metrics, parameters, and results, making it easier to monitor and compare different runs.
 
 Follow these steps to configurate ClearML for logging your results. This setup only needs to be done once. if you haven't set it up yet, complete the steps below. if you've already configured ClearML, your results should be automatically logged and available in your session.
 

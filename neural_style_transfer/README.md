@@ -3,7 +3,7 @@
 ## Directory Components:
 * [datasets](docs/README_DATASETS.md) placeholder for the neural style transfer datasets.
 * [docs](docs/) contains all readmes and documentation specific to the neural style transfer use case.
-* [src](src/) contains tools to do predictions or benchmark your model on your STM32 target.
+* [tf/src](tf/src/) contains tools to do predictions or benchmark your model on your STM32 target.
 
 ## Quick & easy examples:
 The `operation_mode` top-level attribute specifies the operations or the service you want to execute.
@@ -14,7 +14,7 @@ You can refer to readme links below that provide typical examples of operation m
    - [prediction](./docs/README_PREDICTION.md)
 
 Deployment for this use-case is not supported currently. It will be added in future releases.
-All .yaml configuration examples are located in [config_file_examples](./src/config_file_examples/) folder.
+All .yaml configuration examples are located in [config_file_examples](./config_file_examples/) folder.
 
 The different values of the `operation_mode` attribute and the corresponding operations are described in the table below:
 
@@ -29,4 +29,4 @@ The `model_type` attributes currently supported for the neural style transfer ar
 
 ## You don't know where to start? You feel lost?
 
-Remember that minimalistic yaml files are available [here](./src/config_file_examples/) to get a hands-on experience with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start getting familiar with the model zoo!
+Remember that minimalistic yaml files are available [here](./config_file_examples/) to get a hands-on experience with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start getting familiar with the model zoo!

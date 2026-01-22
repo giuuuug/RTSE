@@ -7,14 +7,16 @@
 #  *--------------------------------------------------------------------------------------------*/
 import numpy as np
 import os
+import tensorflow as tf
 import onnx
 import mlflow
+import tqdm
 from common.utils import log_to_file
 
 
 def predict_onnx(sess: onnx.ModelProto, data: np.ndarray) -> np.ndarray:
     """
-    Runs inference on an ONNX model.
+    Runs inference on an ONNX model per image.
 
     Args:
         sess (onnx.ModelProto): The ONNX model.
@@ -31,10 +33,56 @@ def predict_onnx(sess: onnx.ModelProto, data: np.ndarray) -> np.ndarray:
         single_data = data[i:i + 1]  # Set batch size to 1
         single_predictions = sess.run([label_name], {input_name: single_data.astype(np.float32)})[0]
         predictions.append(single_predictions)
-    
+
     # Concatenate all predictions
     onx_pred = np.concatenate(predictions, axis=0)
     return onx_pred
+
+def predict_onnx_batch(sess: onnx.ModelProto, data: tf.data.Dataset, nchw = True) -> np.ndarray:
+    """
+    Runs inference on an ONNX model per batch.
+
+    Args:
+        sess (onnx.ModelProto): The ONNX model.
+        data (tf.data.Dataset): The input data for the model.
+        nchw (boolean) channel first (True) or last (False)
+
+    Returns:
+        np.ndarray: The model's predictions.
+    """
+    input_name = sess.get_inputs()[0].name
+    label_name = sess.get_outputs()[0].name
+    # Process each image individually
+    predictions = []
+    batch_labels = []
+
+    for images, labels in tqdm.tqdm(data):
+        batch_data = tf.cast(images, dtype=tf.float32).numpy()
+        # Convert image to input data format
+        if nchw and batch_data is not None:
+            if batch_data.ndim == 4:
+                # If last dim is smaller than height/width, assume NHWC -> convert to NCHW
+                if batch_data.shape[-1] < batch_data.shape[-2]:
+                    batch_data = np.transpose(batch_data, (0, 3, 1, 2))
+                # else assume already NCHW, do nothing
+
+            elif batch_data.ndim == 3:
+                # If last dim is smaller than height, assume HWC -> CHW
+                if batch_data.shape[-1] < batch_data.shape[-2]:
+                    batch_data = np.transpose(batch_data, (2, 0, 1))
+                # else assume already CHW, do nothing
+
+            else:
+                raise ValueError("The input array must have either 3 or 4 dimensions.")
+        batch_labels.append(labels)
+        batch_predictions = sess.run([label_name], {input_name: batch_data})[0]
+        predictions.append(batch_predictions)
+
+    batch_labels = np.concatenate(batch_labels, axis=0)
+    # Concatenate all predictions
+    onx_pred = np.concatenate(predictions, axis=0)
+
+    return onx_pred, batch_labels
 
 
 def count_onnx_parameters(output_dir: str = None,

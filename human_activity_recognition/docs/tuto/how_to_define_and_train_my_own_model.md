@@ -4,7 +4,7 @@ With ST Model Zoo, you can easily define and train your own TensorFlow neural ne
 
 ## Define my model
 
-First, create your own model in /src/models/custom_model.py for it to be automatically used with the model zoo training script.
+First, create your own model in ./tf/src/models/custom_model.py for it to be automatically used with the model zoo training script.
 Open the python file and copy your model topology inside, here is the default example model:
 
 ```python
@@ -16,7 +16,8 @@ from tensorflow.keras import layers
 
 def get_custom_model(input_shape: tuple[int] = (24, 3, 1),
                     num_classes: int = 4,
-                    dropout: float = None):
+                    dropout: float = None,
+                    **kwargs):
 
     inputs = keras.Input(shape=input_shape)
 
@@ -48,12 +49,13 @@ def get_custom_model(input_shape: tuple[int] = (24, 3, 1),
     model = keras.Model(inputs=inputs, outputs=outputs, name="custom_model")
     return model
 
+
 ```
-The model must be created inside the function get_custom_model. The input size and number of classes are then define in the user_config.yaml. See below.
+The model must be created inside the function `get_custom_model`. The example provided here is just an example and the user is free to change the topology to their own preference. The input size and number of classes are then define in the `user_config.yaml`. 
 
 ## Training my model
 
-To train the model, edit the user_config.yaml and run the training using the python script stm32ai_main.py.
+To train the model, edit the `user_config.yaml` and run the training using the python script `stm32ai_main.py`.
 In this example, the dataset used is the [WISDM](https://www.cis.fordham.edu/wisdm/dataset.php).
 
 ### Operation modes:
@@ -61,9 +63,9 @@ In this example, the dataset used is the [WISDM](https://www.cis.fordham.edu/wis
 Depending on what you want to do, you can use the operation modes below:
 
 - Training:
-    - To simply train the model and get as output the trained tensorflow model (.h5).
+    - To simply train the model and get as output the trained tensorflow model (.keras).
 - Chain_tb:
-    - To train and benchmark the model on a real hardware in one go.
+    - To train and benchmark the model on a real hardware in one go to have the trained model and the footprints (memory and computational).
 
 For any details regarding the parameters of the config file, you can look here:
 
@@ -73,17 +75,18 @@ For any details regarding the parameters of the config file, you can look here:
 
 ### Yaml Configuration example:
 
-In the example below, we use the training operation mode and our custom model. 
+The example below shows how to use the training operation mode with a custom model. 
 For simplier operation mode, you can delete the unneeded parts if you want. 
 
 The most important part here are to define:
 - The operation mode
-- The data paths for the training. Optinally, a validation and a test sets
-- Define which and how many classes you want to detect (ie the model output shape)
-- The model name to custom for the model zoo to load the model in custom_model.py
-- The input_shape and other training parameters
+- The data paths for the training. Optinally, a validation and a test sets (when using `mobility_v1` dataset)
+- Define which and how many classes you want to detect (fixed for WISDM dataset)
+- The model name to custom for the model zoo to load the model in custom_model.py and the input_shape
+- Preprocessing settings, and
+- The training parameters, such as batch_size, epochs, etc.
 
-Look at the documentation linked above for more details.
+Look at the Training documentation linked above for more details. We provide sample configurations below.
 
 ```yaml
 # user_config.yaml
@@ -99,7 +102,7 @@ general:
 operation_mode: training
 
 dataset:
-  name: wisdm
+  dataset_name: wisdm
   # Define the classes you want to detect
   class_names: [Jogging,Stationary,Stairs,Walking]
   training_path: ../datasets/WISDM_ar_v1.1/WISDM_ar_v1.1_raw.txt
@@ -111,12 +114,12 @@ preprocessing: # mandatory
   gravity_rot_sup: true  # mandatory
   normalization: false # mandatory
 
-training:
-  model:
+model:
     # set custom for model zoo to look for your model define earlier
-    name: custom
+    model_name: custom_model
     input_shape: (24, 3, 1) # Your input shape: window of 24 sample of 3 axis accelerometer
-    pretrained_model_path: null
+
+training:
   resume_training_from: null
   # all the parameters below are standard in machine learning, you can look for them in google
   # they mostly depends on the topology of your model and will need a lot of testing
@@ -141,19 +144,19 @@ training:
       patience: 60
 
 mlflow:
-  uri: ./experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/config_file_examples)
 
 ## Run the script:
 
-Edit the user_config.yaml then open a terminal (make sure to be in the folder /src). Finally, run the command:
+After the configurations are selected by editing the user_config.yaml, open a terminal (make sure to be in the folder ./human_activity_recognition/). Finally, run the command:
 
 ```powershell
 python stm32ai_main.py

@@ -1,11 +1,11 @@
 # Benchmarking of Pose Estimation Model
 
-The Pose Estimation Model Benchmarking service is a powerful tool that enables users to evaluate the performance of their pose estimation models built with TensorFlow Lite (.tflite), Keras (.h5), or ONNX (.onnx). With this service, users can easily upload their model and configure the settings to benchmark it and generate various metrics, including memory footprints and inference time. This can be achieved by utilizing the [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) to benchmark on different STM32 target devices or by using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to estimate the memory footprints.
+The Pose Estimation Model Benchmarking service is a powerful tool that enables users to evaluate the performance of their pose estimation models built with TensorFlow Lite (.tflite), Keras (.h5), or ONNX (.onnx). With this service, users can easily upload their model and configure the settings to benchmark it and generate various metrics, including memory footprints and inference time. This can be achieved by utilizing the [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) to benchmark on different STM32 target devices or by using [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to estimate the memory footprints.
 
 <details open><summary><b>1. Configure the YAML file</b></summary>
 
 To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update
-the [benchmarking_config.yaml](../src/config_file_examples/benchmarking_config.yaml) file and use it. This file provides an
+the [benchmarking_config.yaml](../config_file_examples/benchmarking_config.yaml) file and use it. This file provides an
 example of how to configure the benchmarking service to meet your specific needs.
 
 Alternatively, you can follow the tutorial below, which shows how to benchmark your pre-trained pose estimation
@@ -14,13 +14,13 @@ model using our evaluation service.
 <ul><details open><summary><a href="#1-1">1.1 Set the model and the operation mode</a></summary><a id="1-1"></a>
 
 As mentioned previously, all the sections of the YAML file must be set in accordance with
-this **[README.md](../src/config_file_examples/benchmarking_config.yaml)**.
+this **[README.md](../config_file_examples/benchmarking_config.yaml)**.
 In particular, `operation_mode` should be set to evaluation and the `benchmarking` section should be filled as in the
 following example:
 
 ```yaml
 general:
-  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/ movenet_lightning_heatmaps_192_int8.tflite
+  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite
 operation_mode: benchmarking
 ```
 
@@ -37,7 +37,7 @@ In this example, the path to the MoveNet Lightning heatmaps model is provided in
 
 The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its
 footprints and inference time for different STM32 target devices. To use this feature, set the `on_cloud` attribute to
-True. Alternatively, you can use [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to benchmark
+True. Alternatively, you can use [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to benchmark
 your model and estimate its footprints for STM32 target devices locally. To do this, make sure to add the path to
 the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to False.
 
@@ -48,7 +48,6 @@ The `board` attribute is used to provide the name of the STM32 board to benchmar
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -88,10 +87,10 @@ command from the UC folder:
 python stm32ai_main.py
 ```
 
-If you chose to update the [benchmarking_config.yaml](../src/config_file_examples/benchmarking_config.yaml) and use it, then run the following command from the UC folder:
+If you chose to update the [benchmarking_config.yaml](../config_file_examples/benchmarking_config.yaml) and use it, then run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name benchmarking_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name benchmarking_config.yaml
 ```
 
 Note that you can provide YAML attributes as arguments in the command, as shown below:

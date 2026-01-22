@@ -15,7 +15,7 @@ For any details regarding the parameters of the config file, you can look to the
 ## Deployment yaml configuration example:
 
 Below is an example of configuration file used to deploy a pretrained and quantized yamnet from ST Model Zoo on a B-U585I-IOT02A.
-You can find other example of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/src/config_file_examples)
+You can find other example of user_config.yaml [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/config_file_examples)
 
 The most important parts here are to define:
 - The model path of the model to be deployed. 
@@ -30,7 +30,7 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml
 
-general:
+model:
    model_path: ../../../stm32ai-modelzoo/human_activity_recognition/ign/ST_pretrainedmodel_custom_dataset/mobility_v1/ign_wl_24/ign_wl_24.h5     # Path to the model file to deploy
 
 operation_mode: deployment
@@ -45,7 +45,6 @@ preprocessing: # Mandatory
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True # True for online, False for local
     # path to st edge AI, see below
@@ -71,11 +70,11 @@ hydra:
 
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/config_file_examples)
 
 ## Run the script:
 
-Edit the user_config.yaml then open a terminal (make sure to be in the folder /src). Finally, run the command:
+Edit the user_config.yaml then open a terminal (make sure to be in the folder human_activitiy_recognition/). Finally, run the command:
 
 ```powershell
 python stm32ai_main.py
@@ -87,17 +86,17 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Local deployment:
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STEdge AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
 ## Application on the board
 
 Once flashed the board can be connected through a serial terminal and the output of the inference can be seen in the serial terminal. 
-Find more information [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/deployment#5)
+Find more information [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/human_activity_recognition/docs/README_DEPLOYMENT.md)
 
 

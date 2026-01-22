@@ -15,25 +15,30 @@ import tensorflow as tf
 from omegaconf import DictConfig
 import mlflow
 import argparse
-from typing import Optional
 from clearml import Task
 from clearml.backend_config.defs import get_active_config_file
 
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
+from api.api import get_model, get_dataloaders, get_predictor   
 from common.utils import mlflow_ini, set_gpu_memory_limit, get_random_seed, log_to_file
 from common.benchmarking import benchmark
-from src.utils import get_config
-from src.prediction import predict
-from src.deployment import deploy
+from instance_segmentation.tf.src.utils import get_config
+from instance_segmentation.tf.src.deployment import deploy
 
 
-def process_mode(mode: str = None,
-                 configs: DictConfig = None,) -> None:
+def process_mode(mode: str = None, configs: DictConfig = None) -> None:
+    """
+    Process the selected mode of operation for instance segmentation.
+    Loads the model and uses it for prediction, deployment, etc.
+    """
+    model = get_model(configs)
+    mlflow.log_param("model_path", model.model_path)
+    
+    if mode not in ["deployment", "benchmarking"]:
+      dataloaders = get_dataloaders(configs)
 
-    mlflow.log_param("model_path", configs.general.model_path)
     # logging the operation_mode in the output_dir/stm32ai_main.log file
     log_to_file(configs.output_dir, f'operation_mode: {mode}')
     # Check the selected mode and perform the corresponding operation
@@ -41,15 +46,19 @@ def process_mode(mode: str = None,
         if configs.hardware_type == "MPU":
             raise ValueError(f"Invalid hardware. Only STM32N6570-DK boards are supported for deployment.")
         else:
-            deploy(cfg=configs)
+            deploy(cfg=configs, model_path_to_deploy=model.model_path)
         print('[INFO] : Deployment complete.')
         if configs.deployment.hardware_setup.board == "STM32N6570-DK":
             print('[INFO] : Please on STM32N6570-DK toggle the boot switches to the left and power cycle the board.')
     elif mode == 'prediction':
-        predict(cfg=configs)
-        print('[INFO] : Prediction complete.')
+        #gen_load_val_predict(cfg=cfg, model=model)
+        os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        predictor = get_predictor(cfg=configs, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        predictor.predict()
     elif mode == 'benchmarking':
-        benchmark(cfg=configs, custom_objects=None)
+        benchmark(cfg=configs, model_path_to_benchmark=model.model_path, custom_objects=None)
         print('[INFO] : Benchmark complete.')
     # Raise an error if an invalid mode is selected
     else:
@@ -58,7 +67,7 @@ def process_mode(mode: str = None,
     # Record the whole hydra working directory to get all info
     mlflow.log_artifact(configs.output_dir)
     if mode =='benchmarking':
-        mlflow.log_param("stm32ai_version", configs.tools.stm32ai.version)
+        mlflow.log_param("stedgeai_core_version", configs.tools.stedgeai.version)
         mlflow.log_param("target", configs.benchmarking.board)
     # logging the completion of the chain
     log_to_file(configs.output_dir, f'operation finished: {mode}')

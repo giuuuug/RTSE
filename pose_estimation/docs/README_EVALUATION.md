@@ -1,7 +1,7 @@
 # Evaluation of Pose Estimation Model
 
 Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their TensorFlow Lite (
-.tflite) or Keras (.h5) pose estimation model. By uploading their model and a validation set, users can quickly and
+.tflite) or Keras (.keras) pose estimation model. By uploading their model and a validation set, users can quickly and
 easily evaluate the performance of their model and generate various metrics, such as OKS or mAP.
 
 The evaluation service is designed to be fast, efficient, and accurate, making it an essential tool for anyone looking
@@ -12,7 +12,7 @@ to evaluate the performance of their pose estimation model.
 <details open><summary><b>1. Configure the YAML file</b></summary>
 
 To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update
-the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) file and use it. This file provides an
+the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) file and use it. This file provides an
 example of how to configure the evaluation service to meet your specific needs.
 
 Alternatively, you can follow the tutorial below, which shows how to evaluate your pre-trained pose estimation
@@ -21,12 +21,12 @@ model using our evaluation service.
 <ul><details open><summary><a href="#1-1">1.1 Set the model and the operation mode</a></summary><a id="1-1"></a>
 
 As mentioned previously, all the sections of the YAML file must be set in accordance with
-this **[YAML file](../src/config_file_examples/evaluation_mpe_config.yaml)**.
+this **[YAML file](../config_file_examples/evaluation_mpe_config.yaml)**.
 In particular, `operation_mode` should be set to evaluation and the `evaluation` section should be filled as in the
 following example:
 
 ```yaml
-general:
+model:
   model_path: https://github.com/stm32-hotspot/ultralytics/raw/refs/heads/main/examples/YOLOv8-STEdgeAI/stedgeai_models/pose_estimation/yolov8n_256_quant_pt_uf_pose_coco-st.tflite
   model_type: yolo_mpe
 
@@ -34,6 +34,29 @@ operation_mode: evaluation
 ```
 
 In this example, the path to the yolov8n multi pose estimation model is provided in the `model_path` parameter.
+But you can provide any of these types :
+
+- `.keras`: Tensorflow/keras float models that can be used in prediction, training, evaluation, and quantization services.
+- `.tflite`: Tensorflow/keras quantized models that can be used in prediction, evaluation, benchmark, and deployment services.
+- `.onnx`(float): Open Neural Network Exchange float models that can be used in prediction, evaluation, and quantization services.
+- `.onnx`(qdq): Open Neural Network Exchange quantized models that can be used in prediction, evaluation, benchmark, and deployment services.
+
+
+The `model_type` attribute specifies the type of the model architecture that you want to train. It is important to note
+that only certain models are supported. These models include:
+
+- `spe`: These are single pose estimation models that output directly the keypoints positions and confidences.
+
+- `hand_spe`: These are single hand landmarks estimation models that outputs directly the keypoints positions and confidences of the hand pose.
+
+- `head_spe`: These are single head landmarks estimation models that outputs directly the keypoints positions and confidences of the head pose.
+
+- `heatmaps_spe`: These are single pose estimation models that outputs heatmaps that we must 
+post-process in order to get the keypoints positions and confidences.
+
+- `yolo_mpe `: These are the YOLO (You Only Look Once) multiple pose estimation models from Ultralytics that outputs the same tensor as in object detection but with the addition of a set of keypoints for each bbox.
+
+
 
 ```yaml
 evaluation:
@@ -50,8 +73,8 @@ file, as shown in the YAML code below.
 
 ```yaml
 dataset:
+  dataset_name: coco                                         # Dataset name/type
   keypoints: 17                                              # number of keypoints of each pose
-  name: COCO_2017_person                             # Dataset name. Optional, defaults to "<unnamed>".
   test_path: <test-set-root-directory>                       # Path to the root directory of the test set.
 ```
 
@@ -63,13 +86,16 @@ State machine below describes the rules to follow when handling dataset path for
 ![plot](../../common/doc/img/state_machine_evaluation.JPG)
 </div>
 
+> [!IMPORTANT]
+> In 'dataset' section, the `dataset_name` is mandatory and should always be set to 'coco' even if you dont use the COCO dataset
+
 In cases where there is no validation set path or test set provided to evaluate the model trained using the training service, the available data under the `training_path` directory is split into two to create a training set and a validation set. By default, 80% of the data is used for training and the remaining 20% is used for the validation set in the evaluation service.
 
 If you want to use a different split ratio, you need to specify the percentage to be used for the validation set in the `validation_split` parameter, you must specify the same validation_split parameter value in both the training and evaluation services, as shown in the YAML example below:
 
 ```yaml
 dataset:
-  name: COCO_2017_pose
+  dataset_name: coco 
   training_path: ../datasets/COCO_2017_pose/
   validation_path:
   validation_split: 0.20
@@ -113,12 +139,21 @@ enables the model to learn from the annotated data.
 </details></ul>
 <ul><details open><summary><a href="#1-4">1.4 Apply post-processing</a></summary><a id="1-4"></a>
 
+```yaml
+postprocessing:
+  confidence_thresh: 0.001
+  NMS_thresh: 0.1
+  max_detection_boxes: 100
+  plot_metrics: true
+```
+
 Apply post-processing by modifiying the **postprocessing** parameters in **[user_config.yaml](../user_config.yaml)** as
 the following:
 
 - `confidence_thresh` - A *float* between 0.0 and 1.0, the score threshold to filter detections.
 - `NMS_thresh` - A *float* between 0.0 and 1.0, NMS threshold to filter and reduce overlapped boxes.
 - `max_detection_boxes` - An *int* between 0 and infinity, the maximum number of poses that the multi-pose can output for one image.
+- `plot_metrics` - A *bool* that allows to plot the mAP curves
 
 </details></ul>
 <ul><details open><summary><a href="#1-5">1.5 Hydra and MLflow settings</a></summary><a id="1-5"></a>
@@ -154,17 +189,17 @@ command from the UC folder:
 python stm32ai_main.py 
 ```
 
-If you chose to update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) and use it then run
+If you chose to update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) and use it then run
 the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name evaluation_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name evaluation_config.yaml
 ```
 
-In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../src/config_file_examples/chain_eqeb_config.yaml)** example with the command below:
+In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../config_file_examples/chain_eqeb_config.yaml)** example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqeb_config.yaml
 ```
 
 </details>
@@ -175,5 +210,4 @@ to the appropriate directory within **experiments_outputs/\<date-and-time\>**.
 
 You can also find the evaluation results saved in the log file **stm32ai_main.log** under **
 experiments_outputs/\<date-and-time\>**.
-
 </details>

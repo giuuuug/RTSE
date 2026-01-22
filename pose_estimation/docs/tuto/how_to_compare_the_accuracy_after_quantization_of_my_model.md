@@ -6,7 +6,7 @@ The quantization process optimizes the model for efficient deployment on embedde
 
 Depending on what you want to do, you can use the operation modes below:
 - Evaluate:
-    - To evaluate a model, quantized or not (.h5, .tflite or QDQ onnx)
+    - To evaluate a model, quantized or not (.keras, .tflite or QDQ onnx)
 - Chain_eqe:
     - To evaluate a model, quantize it and evaluate it again after quantization for comparison.
 - Chain_eqeb:
@@ -22,7 +22,7 @@ For any details regarding the parameters of the config file, you can look here:
 
 The way ST Model Zoo works is that you edit the user_config.yaml available for each use case and run the stm32ai_main.py python script. 
 
-Here is an example where we evaluate a .h5 model before quantizing it and evaluate it again for comparison:
+Here is an example where we evaluate a .keras model before quantizing it and evaluate it again for comparison:
 
 The most important parts to define are:
 - The model path
@@ -33,18 +33,15 @@ The most important parts to define are:
 ```yaml
 # user_config.yaml
 
-general:
-   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/movenet_lightning_heatmaps_192.h5
+model:
+   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192.keras
    model_type: heatmaps_spe
 
 operation_mode: chain_eqe
 
 dataset:
-   name: coco_pose
-   keypoints: 17
-   test_path: ./datasets/coco_val_single_pose
-   quantization_path: ./datasets/coco_train_single_pose
-   quantization_split: 0.3
+   dataset_name: coco
+   quantization_path: ./datasets/coco_quant_single_pose
 
 preprocessing:
    rescaling:
@@ -65,15 +62,15 @@ quantization:
    granularity: per_tensor
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 When evaluating the model, it is highly recommended to use real data for the final quantization.
 
-You can also find examples of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 
 ## Run the script:

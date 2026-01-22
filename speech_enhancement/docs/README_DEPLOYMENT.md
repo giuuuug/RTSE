@@ -1,31 +1,30 @@
 # Speech enhancement STM32 model deployment
 
-This tutorial will show you how to deploy a quantized ONNX speech enhancement model to an STM32N6 board.
+This tutorial will show you how to deploy a quantized ONNX speech enhancement model to an STM32N6 board, in addition, this tutorial will also explain how to deploy a model from the **[ST public model zoo](./README_MODELS.md)** directly on your *STM32N6 target board*. 
 
-In addition, this tutorial will also explain how to deploy a model from the **[ST public model zoo](./README_MODELS.md)** directly on your *STM32N6 target board*. In this version only deployment on the [STM32N6570-DK] is supported.
+In this version only deployment on the [STM32N6570-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html) is supported.
 
-We strongly recommend following the [training tutorial](./README_TRAINING.md),and 
-[quantization tutorial](./README_QUANTIZATION.md) first.
+We strongly recommend following the [training tutorial](./README_TRAINING.md), and [quantization tutorial](./README_QUANTIZATION.md) first.
 
-Once your model is deployed, it will directly denoise sound acquired from the on-board microphone. You will also be able to enable and disable the denoiser to compare the denoised and the raw audio.
+Once your model is deployed, it will directly denoise audio acquired from the on-board microphone. You will also be able to enable and disable the denoiser to compare the denoised and the raw audio.
 
-**IMPORTANT: You will require headphones, preferably closed-back, with a 3.5mm jack connector to listen to the output of the board**
+**IMPORTANT: You will require headphones, preferably closed-back, with a 3.5mm jack connector to listen to the output of the model.**
 
 
 <details open><summary><a href="#1"><b>1. Configuration</b></a></summary><a id="1"></a>
 <ul><details open><summary><a href="#1-1">1.1 Hardware Setup</a></summary><a id="1-1"></a>
 
-The [stm32 C application](../../application_code/audio/STM32N6/README.md) is running on an STMicroelectronics evaluation kit board called [STM32N6570-DK]. The current version of the application code only supports this board, and usage of the digital microphone.
+The [stm32 C application](../../application_code/audio/STM32N6/README.md) is running on an STMicroelectronics evaluation kit board called [STM32N6570-DK](https://www.st.com/en/evaluation-tools/stm32n6570-dk.html). The current version of the application code only supports this board and usage of the on-board digital microphone.
 
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Software requirements</a></summary><a id="1-2"></a>
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires an internet connection and making a free account. Alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI Core functionalities without installing the software. This requires an internet connection and making a free account. Alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
 
 For local installation:
 
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting to use [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then run the installer.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
 </details></ul>
@@ -39,14 +38,15 @@ The detailed instructions on installation are available in this [wiki article](h
 </details>
 <details open><summary><a href="#2"><b>2. YAML file configuration</b></a></summary><a id="2"></a>
 
-The deployment of the model is driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [UC](../) directory.
+The deployment of the model is driven by a configuration file written in the YAML language. This configuration file is called [user_config.yaml](../user_config.yaml) and is located in the [the root folder of this UC](../) directory.
 
 This tutorial only describes enough settings for you to be able to deploy a pretrained model from the model zoo. Please refer to the [main README](./README_OVERVIEW.md) for more information on the configuration file.
 
-In this tutorial, we will be deploying a pretrained model from the STM32 model zoo.
-You can copy the `preprocessing` section to your own configuration file, to ensure you have the correct audio preprocessing parameters.
+In this tutorial, we will be deploying a pretrained model from the STM32AI model zoo.
 
-In this tutorial, we will deploy a quantized [STFT-TCNN]() that has been trained on the CSTR VCTK + DEMAND, colloquially referred to as the Valentini dataset.
+You can copy the `preprocessing` section from the configuration file present in the model zoo to your own configuration file, to ensure you have the correct audio preprocessing parameters.
+
+In this tutorial, we will deploy a quantized [STFT-TCNN](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/speech_enhancement/stft_tcnn) that has been trained on the CSTR VCTK + DEMAND, colloquially referred to as the Valentini dataset.
 
 <ul><details open><summary><a href="#2-1">2.1 Operation mode</a></summary><a id="2-1"></a>
 
@@ -80,7 +80,7 @@ Select the model you would like to deploy by filling the `model` section of the 
 
 ```yaml
 model:
-  onnx_path: path/to/your/model.onnx # For quantization, evaluation, benchmarking and deployment only
+  model_path: path/to/your/model.onnx # For quantization, evaluation, benchmarking and deployment only
 ```
 
 **VERY IMPORTANT : MAKE SURE YOUR MODEL HAS A STATIC INPUT SHAPE !**
@@ -92,7 +92,7 @@ See section <a href="#2-6"> 2.6 </a> of this README for more details on the inpu
 
 <ul><details open><summary><a href="#2-4">2.4 Audio preprocessing</a></summary><a id="2-4"></a>
 
-The general flow of inference is the following: A complex spectrogram of the noisy audio is computed by performing a Short-Term Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
+The general flow of inference is the following: A complex spectrogram of the noisy audio is computed by performing a Short-time Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
 
 The model outputs a mask of the same shape as its input, and this mask is applied to the complex spectrogram. The masked complex spectrogram is then transformed back to the time domain by inverse STFT. This gives us the denoised time-domain signal.
 
@@ -106,7 +106,7 @@ The 'preprocessing' section handles this part of the deployment pipeline, and an
 
 ```yaml
 preprocessing:
-  pipeline_type: LibrosaSpecPipeline # Do not change if unsure.
+  pipeline_type: LibrosaSpecPipeline # Do not change 
   peak_normalize: False
   sample_rate: 16000
   n_fft: 512
@@ -117,7 +117,7 @@ preprocessing:
   power: 1
 ```
 
-**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported. Other pipelines are present in [preprocessing/freq_pipeline.py](../src/preprocessing/freq_pipeline.py) but in an experimental stage.
+**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported. Other pipelines are present in [preprocessing/freq_pipeline.py](../pt/src/preprocessing/freq_pipeline.py) but are not supported in the on-board application code.
 
 
 For more details on what each parameter does, please refer to section 3.6 of the [main README](./README_OVERVIEW.md)
@@ -127,17 +127,16 @@ Different models are trained using different set of preprocessing parameters, an
 </details></ul>
 <ul><details open><summary><a href="#2-5">2.5 Configuring the tool section</a></summary><a id="2-5"></a>
 
-Next, you'll want to configure the `tools` section in your configuration file. This section covers the usage of the STM32-X-CUBEAI tool, which benchmarks .tflite and .h5 models, and converts them to C code.
+Next, you'll want to configure the `tools` section in your configuration file. This section covers the usage of the STEdgeAI tool, which benchmarks Keras, Tflite and ONNX models and converts them to C code.
 
-To convert your model to C code, you can either use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) (requires making an account), or use the local versions of CubeAI and CubeIDE you installed earlier in the tutorial.
+To convert your model to C code, you can either use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) (requires making an account), or use the local versions of STEdgeAI and CubeIDE you installed earlier in the tutorial.
 
-If you wish to use the [STM32 developer cloud](https://stedgeai-dc.st.com/home), simply set the `on_cloud` attribute to True, like in the example below. If using the developer cloud, you do not need to specify paths to STM32CubeAI or CubeIDE.
+If you wish to use the [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home), simply set the `on_cloud` attribute to True, like in the example below. If using the developer cloud, you do not need to specify paths to STEdgeAI or CubeIDE.
 
 ```yaml
 
 tools:
   stedgeai:
-    version: 10.0.0 
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -173,10 +172,9 @@ deployment:
   hardware_setup:
     serie: STM32N6
     board: STM32N6570-DK
-  build_conf : "N6 Audio Bare Metal" # this is the default configuration
-  # build_conf : "N6 Audio Thread X"
-  # build_conf : "N6 Audio Bare Metal Low Power"
-  # build_conf : "N6 Audio Thread X Low Power"
+  build_conf : "BM" # this is the default configuration
+  # build_conf : "BM_LP"
+
 ```
 
 A few comments:
@@ -184,6 +182,8 @@ A few comments:
 - The `frames_per_patch` attribute corresponds to how many spectrogram frames get denoised per inference on the board. How much this represents in terms of time depends on your preprocessing parameters. For example, with a sampling rate of 16000 and a hop length of 160, one inference is done every 300 ms. In turn, this induces a 300 ms delay between audio acquisition and denoised audio playback.
 
 - The model is allowed to look ahead a few frames into the future, to attenuate patch boundary artifacts on its output. It is also allowed to look the same number of frames into the past. This number of lookahead frames is controlled by the `lookahead_frames` attribute. If you reduce this attribute too much, or if your model's receptive field increases, you may see the patch boundary artifacts appear again.
+
+- Note that the total length of a patch fed to the model during inference is equal to `frames_per_patch + 2*lookahead_frames`. Using the values in the above example, this means each patch contains 40 frames (30+5*2). One inference is still done every 300 ms, but the induced delay is 400 ms.
 
 **VERY IMPORTANT : MAKE SURE YOUR MODEL'S INPUT SHAPE IS COMPATIBLE WITH THESE PARAMETERS**
 
@@ -211,8 +211,7 @@ To build the project and flash the target board, connect an STM32N6570-DK to you
 </details></ul>
 <ul><details open><summary><a href="#3-2">3.2 Run stm32ai_main.py</a></summary><a id="3-2"></a>
 
-Then, once your configuration file is properly configured, run the following command from [UC](../../):
-Make sure you properly set `operation_mode` to `"deployment"`.
+Then, once your configuration file is properly configured, run the following command from [the root folder of this UC](../):
 
 ```bash
 python stm32ai_main.py
@@ -240,7 +239,7 @@ We recommend you play around with enabling/disabling the denoiser to hear the di
 
 Some speech enhancement models, including those in the zoo, are not trained to evaluate the level of noise of their input. 
 
-Accordingly, they only perform well at SNRs that they have seen during training. If you trained a model in the zoo using the Valentini dataset, your model will not have seen SNRs below 0 dB during training, and so will perform poorly in these cases. 
+Therefore, they only perform well at SNRs that they have seen during training. If you trained a model in the zoo using the Valentini dataset, your model will not have seen SNRs below 0 dB during training, and so will perform poorly in these cases. 
 
 You can see this phenomenon for yourself by playing some loud noise, and then moving your voice closer and farther from the board: once you get close enough, the model will denoise well, but once you move away sufficiently, it will get much worse.
 

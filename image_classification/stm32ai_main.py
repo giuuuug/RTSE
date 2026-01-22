@@ -11,10 +11,15 @@ import sys
 from hydra.core.hydra_config import HydraConfig
 import hydra
 import warnings
+from timm import utils as timm_utils
+from types import SimpleNamespace
+
 warnings.filterwarnings("ignore")
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 import tensorflow as tf
+import torch
 from omegaconf import DictConfig
 import mlflow
 import argparse
@@ -25,326 +30,282 @@ from clearml.backend_config.defs import get_active_config_file
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-
+from api import get_model, get_dataloaders, get_trainer, get_quantizer, get_evaluator, get_predictor
 from common.utils import mlflow_ini, set_gpu_memory_limit, get_random_seed, display_figures, log_to_file
 from common.benchmarking import benchmark, cloud_connect
 from common.evaluation import gen_load_val
 from common.prediction import gen_load_val_predict
-from src.preprocessing import preprocess
-from src.utils import get_config
-from src.training import train
-from src.evaluation import evaluate
-from src.quantization import quantize
-from src.prediction import predict
-from src.deployment import deploy, deploy_mpu
+from image_classification.tf.src.utils import get_config
+from image_classification.tf.src.deployment import deploy, deploy_mpu
+from common.onnx_utils.onnx_model_convertor import torch_model_export_static
 
 
-def chain_qd(cfg: DictConfig = None, quantization_ds: tf.data.Dataset = None, hardware_type: str = "MCU") -> None:
-    """
-    Runs the chain_qd pipeline, including quantization, and deployment
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-        hardware_type (str): parameter to specify a target on which to deploy
-
-    Returns:
-        None
-    """
-
-    # Connect to STM32Cube.AI Developer Cloud
-    credentials = None
-    if cfg.tools.stm32ai.on_cloud:
-        _, _, credentials = cloud_connect(stm32ai_version=cfg.tools.stm32ai.version)
-
-    # whether data are coming from train set or quantization set, they end up in quantization_ds
-    source_image = cfg.dataset.quantization_path if cfg.dataset.quantization_path else cfg.dataset.training_path
-    source_image = source_image if source_image else "random generation"
-    print('[INFO] : Quantization using input images coming from {}'.format(source_image))
-    quantized_model_path = quantize(cfg=cfg, quantization_ds=quantization_ds)
-    print('[INFO] : Quantization complete.')
-
-    if hardware_type == "MCU":
-        deploy(cfg=cfg, model_path_to_deploy=quantized_model_path, credentials=credentials)
-    else:
-        print("MPU DEPLOYMENT")
-        deploy_mpu(cfg=cfg, model_path_to_deploy=quantized_model_path, credentials=credentials)
-    print('[INFO] : Deployment complete.')
-    if cfg.deployment.hardware_setup.board == "STM32N6570-DK":
-        print('[INFO] : Please on STM32N6570-DK toggle the boot switches to the left and power cycle the board.')
-
-
-def chain_qb(cfg: DictConfig = None, quantization_ds: tf.data.Dataset = None) -> None:
-    """
-    Runs the chain_qb pipeline, including quantization and benchmarking.
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-
-    Returns:
-        None
-    """
-
-    # Connect to STM32Cube.AI Developer Cloud
-    credentials = None
-    if cfg.tools.stm32ai.on_cloud:
-        _, _, credentials = cloud_connect(stm32ai_version=cfg.tools.stm32ai.version)
-
-    # whether data are coming from train set or quantization set, they end up in quantization_ds
-    source_image = cfg.dataset.quantization_path if cfg.dataset.quantization_path else cfg.dataset.training_path
-    source_image = source_image if source_image else "random generation"
-    print('[INFO] : Quantization using input images coming from {}'.format(source_image))
-    quantized_model_path = quantize(cfg=cfg, quantization_ds=quantization_ds)
-    print('[INFO] : Quantization complete.')
-    benchmark(cfg=cfg, model_path_to_benchmark=quantized_model_path, credentials=credentials)
-    print('[INFO] : Benchmarking complete.')
-
-
-def chain_eqe(cfg: DictConfig = None, valid_ds: tf.data.Dataset = None, quantization_ds: tf.data.Dataset = None,
-              test_ds: tf.data.Dataset = None) -> str:
-    """
-    Runs the chain_eqe pipeline, including evaluation of a float model, quantization and evaluation of
-    the quantized model
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        valid_ds (tf.data.Dataset): Validation dataset. Defaults to None.
-        test_ds (tf.data.Dataset): Test dataset. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-
-    Returns:
-        quantized_model_path (str): path to quantized model
-    """
-
-    if test_ds:
-        evaluate(cfg=cfg, eval_ds=test_ds, name_ds="test_set")
-    else:
-        evaluate(cfg=cfg, eval_ds=valid_ds, name_ds="validation_set")
-    print('[INFO] : Evaluation complete.')
-    display_figures(cfg)
-
-    # whether data are coming from train set or quantization set, they end up in quantization_ds
-    source_image = cfg.dataset.quantization_path if cfg.dataset.quantization_path else cfg.dataset.training_path
-    source_image = source_image if source_image else "random generation"
-    print('[INFO] : Quantization using input images coming from {}'.format(source_image))
-    quantized_model_path = quantize(cfg=cfg, quantization_ds=quantization_ds)
-    print('[INFO] : Quantization complete.')
-
-    if test_ds:
-        evaluate(cfg=cfg, eval_ds=test_ds, model_path_to_evaluate=quantized_model_path, name_ds="test_set")
-    else:
-        evaluate(cfg=cfg, eval_ds=valid_ds, model_path_to_evaluate=quantized_model_path, name_ds="validation_set")
-    print('[INFO] : Evaluation complete.')
-    display_figures(cfg)
-
-    return quantized_model_path
-
-
-def chain_eqeb(cfg: DictConfig = None, valid_ds: tf.data.Dataset = None, quantization_ds: tf.data.Dataset = None,
-               test_ds: tf.data.Dataset = None) -> None:
-    """
-    Runs the chain_eqeb pipeline, including evaluation of the float model, quantization, evaluation of
-    the quantized model and benchmarking
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        valid_ds (tf.data.Dataset): Validation dataset. Defaults to None.
-        test_ds (tf.data.Dataset): Test dataset. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-
-    Returns:
-        None
-    """
-
-    # Connect to STM32Cube.AI Developer Cloud
-    credentials = None
-    if cfg.tools.stm32ai.on_cloud:
-        _, _, credentials = cloud_connect(stm32ai_version=cfg.tools.stm32ai.version)
-
-    quantized_model_path = chain_eqe(cfg=cfg, valid_ds=valid_ds, quantization_ds=quantization_ds, test_ds=test_ds)
-
-    benchmark(cfg=cfg, model_path_to_benchmark=quantized_model_path, credentials=credentials)
-    print('[INFO] : Benchmarking complete.')
-
-
-def chain_tqe(cfg: DictConfig = None, train_ds: tf.data.Dataset = None, valid_ds: tf.data.Dataset = None,
-              quantization_ds: tf.data.Dataset = None, test_ds: tf.data.Dataset = None) -> str:
-    """
-    Runs the chain_tqe pipeline, including training, quantization and evaluation.
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        train_ds (tf.data.Dataset): Training dataset. Defaults to None.
-        valid_ds (tf.data.Dataset): Validation dataset. Defaults to None.
-        test_ds (tf.data.Dataset): Test dataset. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-
-    Returns:
-        quantized_model_path (str): path to model quantized
-    """
-    if test_ds:
-        trained_model_path = train(cfg=cfg, train_ds=train_ds, valid_ds=valid_ds, test_ds=test_ds)
-    else:
-        trained_model_path = train(cfg=cfg, train_ds=train_ds, valid_ds=valid_ds)
-    print('[INFO] : Training complete.')
-
-    # whether data are coming from train set or quantization set, they end up in quantization_ds
-    source_image = cfg.dataset.quantization_path if cfg.dataset.quantization_path else cfg.dataset.training_path
-    source_image = source_image if source_image else "random generation"
-    print('[INFO] : Quantization using input images coming from {}'.format(source_image))
-    quantized_model_path = quantize(cfg=cfg, quantization_ds=quantization_ds, float_model_path=trained_model_path)
-    print('[INFO] : Quantization complete.')
-
-    if test_ds:
-        evaluate(cfg=cfg, eval_ds=test_ds, model_path_to_evaluate=quantized_model_path, name_ds="test_set")
-    else:
-        evaluate(cfg=cfg, eval_ds=valid_ds, model_path_to_evaluate=quantized_model_path, name_ds="validation_set")
-    print('[INFO] : Evaluation complete.')
-    display_figures(cfg)
-
-    return quantized_model_path
-
-
-def chain_tqeb(cfg: DictConfig = None, train_ds: tf.data.Dataset = None, valid_ds: tf.data.Dataset = None,
-               quantization_ds: tf.data.Dataset = None, test_ds: tf.data.Dataset = None) -> None:
-    """
-    Runs the chain_tqeb pipeline, including training, quantization, evaluation and benchmarking.
-
-    Args:
-        cfg (DictConfig): Configuration dictionary. Defaults to None.
-        train_ds (tf.data.Dataset): Training dataset. Defaults to None.
-        valid_ds (tf.data.Dataset): Validation dataset. Defaults to None.
-        test_ds (tf.data.Dataset): Test dataset. Defaults to None.
-        quantization_ds:(tf.data.Dataset): quantization dataset. Defaults to None
-
-    Returns:
-        None
-    """
-
-    # Connect to STM32Cube.AI Developer Cloud
-    credentials = None
-    if cfg.tools.stm32ai.on_cloud:
-        _, _, credentials = cloud_connect(stm32ai_version=cfg.tools.stm32ai.version)
-
-    quantized_model_path = chain_tqe(cfg=cfg, train_ds=train_ds, valid_ds=valid_ds, quantization_ds=quantization_ds,
-                                     test_ds=test_ds)
-
-    benchmark(cfg=cfg, model_path_to_benchmark=quantized_model_path, credentials=credentials)
-    print('[INFO] : Benchmarking complete.')
-
-
-def process_mode(mode: str = None,
-                 configs: DictConfig = None,
-                 train_ds: tf.data.Dataset = None,
-                 valid_ds: tf.data.Dataset = None,
-                 quantization_ds: tf.data.Dataset = None,
-                 test_ds: tf.data.Dataset = None) -> None:
+def _process_mode(cfg: DictConfig = None) -> None:
     """
     Process the selected mode of operation.
 
     Args:
-        mode (str): The selected mode of operation. Must be one of 'train', 'evaluate', or 'predict'.
-        configs (DictConfig): The configuration object.
-        train_ds (tf.data.Dataset): The training dataset. Required if mode is 'train'.
-        valid_ds (tf.data.Dataset): The validation dataset. Required if mode is 'train' or 'evaluate'.
-        test_ds (tf.data.Dataset): The test dataset. Required if mode is 'evaluate' or 'predict'.
-        quantization_ds(tf.data.Dataset): The quantization dataset.
+        cfg (DictConfig): The configuration object.
 
     Returns:
         None
     Raises:
         ValueError: If an invalid operation_mode is selected or if required datasets are missing.
     """
-    
-    mlflow.log_param("model_path", configs.general.model_path)
-    # logging the operation_mode in the output_dir/stm32ai_main.log file
-    log_to_file(configs.output_dir, f'operation_mode: {mode}')
-    # Check the selected mode and perform the corresponding operation
+
+    # Logging the operation_mode in the output_dir/stm32ai_main.log file
+    mode = cfg.operation_mode
+    mlflow.log_param("model_path", cfg.model.model_path)
+    log_to_file(cfg.output_dir, f'operation_mode: {mode}')
+
+    # Connect to STM32Cube.AI Developer Cloud if needed
+    credentials = None
+    if cfg.tools and cfg.tools.stedgeai and cfg.tools.stedgeai.on_cloud:
+        _, _, credentials = cloud_connect(stedgeai_core_version=cfg.tools.stedgeai.version)
+
+    # Creates model
+    model = get_model(cfg=cfg)
+    saved_model_dir = os.path.join(cfg.output_dir, cfg.general.saved_models_dir)
+    os.makedirs(saved_model_dir, exist_ok=True)
+    if cfg.model.framework == 'torch' and isinstance(model, torch.nn.Module) and cfg.operation_mode not in ['training', 'chain_tb', 'chain_tqe', 'chain_tqeb', 'chain_tbqeb']:
+        # Export Torch models in onnx format for all services but training 
+        # (export to onnx is also handled at the end of the trainer.train() method)
+        model = torch_model_export_static(cfg=cfg, 
+                                          model_dir=saved_model_dir, 
+                                          model=model)
+
+    # Creates dataloaders
+    dataloaders = get_dataloaders(cfg=cfg)
+
+    # Executes Services
     if mode == 'training':
-        if test_ds:
-            train(cfg=configs, train_ds=train_ds, valid_ds=valid_ds, test_ds=test_ds)
-        else:
-            train(cfg=configs, train_ds=train_ds, valid_ds=valid_ds)
-        display_figures(configs)
-        print('[INFO] : Training complete.')
+        trainer = get_trainer(cfg=cfg, 
+                              model=model, 
+                              dataloaders=dataloaders)
+        trained_model = trainer.train()
+        display_figures(cfg)
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
     elif mode == 'evaluation':
-        # Generates the model to be loaded on the stm32n6 device using stedgeai core,
-        # then loads it and validates in on the device if required.
-        gen_load_val(cfg=configs)
-        # Launches evaluation on the target through the model zoo evaluation service
+        gen_load_val(cfg=cfg, model=model)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
-        if test_ds:
-            evaluate(cfg=configs, eval_ds=test_ds, name_ds="test_set")
-        else:
-            evaluate(cfg=configs, eval_ds=valid_ds, name_ds="validation_set")
-        display_figures(configs)
-        print('[INFO] : Evaluation complete.')
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
     elif mode == 'deployment':
-        if configs.hardware_type == "MPU":
-            print("MPU_DEPLOYMENT")
-            deploy_mpu(cfg=configs)
+        if cfg.hardware_type == "MPU":
+            deploy_mpu(cfg=cfg, model_path_to_deploy=model.model_path)
         else:
-            deploy(cfg=configs)
-        print('[INFO] : Deployment complete.')
-        if configs.deployment.hardware_setup.board == "STM32N6570-DK":
-            print('[INFO] : Please on STM32N6570-DK toggle the boot switches to the left and power cycle the board.')
+            deploy(cfg=cfg, model_path_to_deploy=model.model_path)
     elif mode == 'quantization':
-        # whether data are coming from train set or quantization set, they end up in quantization_ds
-        source_image = configs.dataset.quantization_path if configs.dataset.quantization_path \
-            else configs.dataset.training_path
-        source_image = source_image if source_image else "random generation"
-        print('[INFO] : Quantization using input images coming from {}'.format(source_image))
-        quantize(cfg=configs, quantization_ds=quantization_ds)
-        print('[INFO] : Quantization complete.')
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
     elif mode == 'prediction':
-        # Generates the model to be loaded on the stm32n6 device using stedgeai core,
-        # then loads it and validates in on the device if required.
-        gen_load_val_predict(cfg=configs)
-        # Launches prediction on the target through the model zoo prediction service
+        gen_load_val_predict(cfg=cfg, model=model)
         os.chdir(os.path.dirname(os.path.realpath(__file__)))
-        predict(cfg=configs)
-        print('[INFO] : Prediction complete.')
+        predictor = get_predictor(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        predictor.predict()
     elif mode == 'benchmarking':
-        benchmark(cfg=configs)
-        print('[INFO] : Benchmark complete.')
+        benchmark(cfg=cfg, model_path_to_benchmark=model.model_path)
     elif mode == 'chain_tqe':
-        chain_tqe(cfg=configs, train_ds=train_ds, valid_ds=valid_ds, quantization_ds=quantization_ds, test_ds=test_ds)
+        trainer = get_trainer(cfg=cfg, 
+                              model=model, 
+                              dataloaders=dataloaders)
+        trained_model = trainer.train()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=quantized_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
         print('[INFO] : chain_tqe complete.')
     elif mode == 'chain_tqeb':
-        chain_tqeb(cfg=configs, train_ds=train_ds, valid_ds=valid_ds, quantization_ds=quantization_ds, test_ds=test_ds)
+        trainer = get_trainer(cfg=cfg, 
+                              model=model, 
+                              dataloaders=dataloaders)
+        trained_model = trainer.train()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=trained_model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=quantized_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        benchmark(cfg=cfg, model_path_to_benchmark=quantized_model.model_path, credentials=credentials)
         print('[INFO] : chain_tqeb complete.')
     elif mode == 'chain_eqe':
-        chain_eqe(cfg=configs, valid_ds=valid_ds, quantization_ds=quantization_ds, test_ds=test_ds)
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=quantized_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
         print('[INFO] : chain_eqe complete.')
     elif mode == 'chain_eqeb':
-        chain_eqeb(cfg=configs, valid_ds=valid_ds, quantization_ds=quantization_ds, test_ds=test_ds)
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        evaluator = get_evaluator(cfg=cfg, 
+                                  model=quantized_model, 
+                                  dataloaders=dataloaders)
+        acc = evaluator.evaluate()
+        benchmark(cfg=cfg, model_path_to_benchmark=quantized_model.model_path, credentials=credentials)
         print('[INFO] : chain_eqeb complete.')
     elif mode == 'chain_qb':
-        chain_qb(cfg=configs, quantization_ds=quantization_ds)
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        benchmark(cfg=cfg, model_path_to_benchmark=quantized_model.model_path, credentials=credentials)
         print('[INFO] : chain_qb complete.')
     elif mode == 'chain_qd':
-        chain_qd(cfg=configs, quantization_ds=quantization_ds, hardware_type=configs.hardware_type)
+        quantizer = get_quantizer(cfg=cfg, 
+                                  model=model, 
+                                  dataloaders=dataloaders)
+        quantized_model = quantizer.quantize()
+        if cfg.hardware_type == "MCU":
+            deploy(cfg=cfg, model_path_to_deploy=quantized_model.model_path, credentials=credentials)
+        else:
+            deploy_mpu(cfg=cfg, model_path_to_deploy=quantized_model.model_path, credentials=credentials)
         print('[INFO] : chain_qd complete.')
     # Raise an error if an invalid mode is selected
-    else:
+    else: 
         raise ValueError(f"Invalid mode: {mode}")
 
     # Record the whole hydra working directory to get all info
-    mlflow.log_artifact(configs.output_dir)
+    mlflow.log_artifact(cfg.output_dir)
     if mode in ['benchmarking', 'chain_qb', 'chain_eqeb', 'chain_tqeb']:
-        mlflow.log_param("stm32ai_version", configs.tools.stm32ai.version)
-        mlflow.log_param("target", configs.benchmarking.board)
-    # logging the completion of the chain
-    log_to_file(configs.output_dir, f'operation finished: {mode}')
+        mlflow.log_param("stedgeai_core_version", cfg.tools.stedgeai.version)
+        mlflow.log_param("target", cfg.benchmarking.board)
+    
+    # Logging the completion of the chain
+    log_to_file(cfg.output_dir, f'operation finished: {mode}')
 
     # ClearML - Example how to get task's context anywhere in the file.
     # Checks if there's a valid ClearML configuration file
     if get_active_config_file() is not None: 
         print(f"[INFO] : ClearML task connection")
         task = Task.current_task()
-        task.connect(configs)
+        task.connect(cfg)
 
+def _fw_agnostic_initializations(cfg: DictConfig = None) -> DictConfig:
+    """
+    Framework-agnostic initializations.
+
+    This function performs initializations that are independent of the specific deep learning framework being used.
+    It includes parsing the configuration file, setting up MLFlow, and initializing ClearML if a valid configuration
+    file is found.
+
+    Args:
+        cfg (DictConfig): Configuration object.
+
+    Returns:
+        DictConfig: Updated configuration object with initialized settings.
+    """
+    # Parse the configuration file and set the output directory
+    cfg = get_config(cfg)
+    cfg.output_dir = HydraConfig.get().run.dir
+
+    # Initialize MLFlow for experiment tracking
+    # MLFlow is used to log metrics, parameters, and artifacts during training
+    mlflow_ini(cfg)
+
+    # Check if there's a valid ClearML configuration file and initialize ClearML
+    print(f"[INFO] : ClearML config check")
+    if get_active_config_file() is not None:
+        # If a ClearML configuration file is found, initialize ClearML
+        print(f"[INFO] : ClearML initialization and configuration")
+        # Initialize ClearML's Task object with the project and task names
+        task = Task.init(project_name=cfg.general.project_name,
+                         task_name='ic_modelzoo_task')
+        # Optionally log the configuration to ClearML
+        task.connect_configuration(name=cfg.operation_mode, 
+                                   configuration=cfg)
+    
+    # Return the updated configuration object
+    return cfg
+
+
+def _tf_specific_initializations(cfg: DictConfig = None) -> None:
+    """
+    TensorFlow-specific initializations.
+
+    This function performs initializations specific to TensorFlow, such as configuring GPU memory limits
+    and setting a random seed for reproducibility.
+
+    Args:
+        cfg (DictConfig): Configuration object.
+    """
+    # Check if the 'general' section exists in the configuration
+    if "general" in cfg and cfg.general:
+        # Set an upper limit on GPU memory usage if specified in the configuration
+        if "gpu_memory_limit" in cfg.general and cfg.general.gpu_memory_limit:
+            set_gpu_memory_limit(cfg.general.gpu_memory_limit)
+            print(f"[INFO] : Setting upper limit of usable GPU memory to {int(cfg.general.gpu_memory_limit)}GBytes.")
+        else:
+            # Warn the user if GPU memory usage is unlimited
+            print("[WARNING] The usable GPU memory is unlimited.\n"
+                "Please consider setting the 'gpu_memory_limit' attribute "
+                "in the 'general' section of your configuration file.")
+
+    # Set a random seed for reproducibility
+    seed = get_random_seed(cfg)
+    print(f'[INFO] : The random seed for this simulation is {seed}')
+    if seed is not None:
+        tf.keras.utils.set_random_seed(seed)
+
+
+def _torch_specific_initializations(cfg: DictConfig = None) -> None:
+    """
+    PyTorch-specific initializations.
+
+    This function is a placeholder for PyTorch-specific initializations, such as configuring GPU memory limits
+    and setting a random seed for reproducibility.
+
+    Args:
+        cfg (DictConfig): Configuration object.
+    """
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    temp_args = SimpleNamespace(
+        device=device,
+    )
+    device = timm_utils.init_distributed_device(temp_args)
+    
+    cfg.device = temp_args.device
+    cfg.world_size = temp_args.world_size
+    cfg.rank = temp_args.rank
+    cfg.local_rank = temp_args.local_rank
+    cfg.distributed = temp_args.distributed
+    
 
 @hydra.main(version_base=None, config_path="", config_name="user_config")
 def main(cfg: DictConfig) -> None:
@@ -357,53 +318,26 @@ def main(cfg: DictConfig) -> None:
     Returns:
         None
     """
+    # Framework agnostic initializations
+    cfg = _fw_agnostic_initializations(cfg)
 
-    # Configure the GPU (the 'general' section may be missing)
-    if "general" in cfg and cfg.general:
-        # Set upper limit on usable GPU memory
-        if "gpu_memory_limit" in cfg.general and cfg.general.gpu_memory_limit:
-            set_gpu_memory_limit(cfg.general.gpu_memory_limit)
-            print(f"[INFO] : Setting upper limit of usable GPU memory to {int(cfg.general.gpu_memory_limit)}GBytes.")
-        else:
-            print("[WARNING] The usable GPU memory is unlimited.\n"
-                  "Please consider setting the 'gpu_memory_limit' attribute "
-                  "in the 'general' section of your configuration file.")
+    # Framework specific initializations
+    if cfg.model.framework == "tf":
+        _tf_specific_initializations(cfg)
+    elif cfg.model.framework == "torch":
+        _torch_specific_initializations(cfg)
+    else:
+        raise ValueError(f"Invalid framework used: {cfg.model.framework}")
 
-    # Parse the configuration file
-    cfg = get_config(cfg)
-    cfg.output_dir = HydraConfig.get().run.dir
-    mlflow_ini(cfg)
+    # Executes the required service
+    _process_mode(cfg=cfg)
 
-    # Checks if there's a valid ClearML configuration file
-    print(f"[INFO] : ClearML config check")
-    if get_active_config_file() is not None:
-        print(f"[INFO] : ClearML initialization and configuration")
-        # ClearML - Initializing ClearML's Task object.
-        task = Task.init(project_name=cfg.general.project_name,
-                         task_name='ic_modelzoo_task')
-        # ClearML - Optional yaml logging 
-        task.connect_configuration(name=cfg.operation_mode, 
-                                   configuration=cfg)
-          
-    # Seed global seed for random generators
-    seed = get_random_seed(cfg)
-    print(f'[INFO] : The random seed for this simulation is {seed}')
-    if seed is not None:
-        tf.keras.utils.set_random_seed(seed)
-
-    # Extract the mode from the command-line arguments
-    mode = cfg.operation_mode
-    preprocess_output = preprocess(cfg=cfg)
-    train_ds, valid_ds, quantization_ds, test_ds = preprocess_output
-    # Process the selected mode
-    process_mode(mode=mode, configs=cfg, train_ds=train_ds, valid_ds=valid_ds, quantization_ds=quantization_ds,
-                 test_ds=test_ds)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config-path', type=str, default='', help='Path to folder containing configuration file')
-    parser.add_argument('--config-name', type=str, default='user_config', help='name of the configuration file')
+    parser.add_argument('--config-path', type=str, default='./', help='Path to folder containing configuration file')
+    parser.add_argument('--config-name', type=str, default='user_config.yaml', help='name of the configuration file')
     # add arguments to the parser
     parser.add_argument('params', nargs='*',
                         help='List of parameters to over-ride in config.yaml')

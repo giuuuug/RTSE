@@ -25,11 +25,11 @@ To install X-LINUX-AI on your target device please follow the dedicated wiki pag
 
 - X-LINUX-AI expansion package: https://wiki.st.com/stm32mpu/wiki/Category:X-LINUX-AI_expansion_package
 
-To facilitate the deployment and avoid tools installation, the MPU deployment is based on [ST Edge AI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and making a free account.
+To facilitate the deployment and avoid tools installation, the MPU deployment is based on [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and making a free account.
 
-You can use the deployment service by using a model zoo [pre-trained model](README_MODELS.md) from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/image_classification/) or your own image classification model. Please refer to the YAML file [deployment_mpu_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo [pre-trained model](README_MODELS.md) from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/image_classification/) or your own image classification model. Please refer to the YAML file [deployment_mpu_config.yaml](../config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
-As an example, we will show how to deploy the model [mobilenet_v2_1.0_224_int8_per_tensor.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/Public_pretrainedmodel_public_dataset/ImageNet/mobilenet_v2_1.0_224/mobilenet_v2_1.0_224_int8_per_tensor.tflite) pre-trained on the Imagenet dataset using the necessary parameters provided in [mobilenet_v2_1.0_224_per_tensor_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/Public_pretrainedmodel_public_dataset/ImageNet/mobilenet_v2_1.0_224/mobilenet_v2_1.0_224_per_tensor_config.yaml).
+As an example, we will show how to deploy the model [mobilenetv2_a100_224_int8_per_tensor.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/Public_pretrainedmodel_public_dataset/imagenet/mobilenetv2_a100_224/mobilenetv2_a100_224_int8_per_tensor.tflite) pre-trained on the Imagenet dataset using the necessary parameters provided in [mobilenetv2_a100_224_per_tensor_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/Public_pretrainedmodel_public_dataset/imagenet/mobilenetv2_a100_224/mobilenetv2_a100_224_per_tensor_config.yaml).
 
 </details></ul>
 </details>
@@ -37,17 +37,16 @@ As an example, we will show how to deploy the model [mobilenet_v2_1.0_224_int8_p
 
 <ul><details open><summary><a href="#2-1">2.1 Setting the Model and the Operation Mode</a></summary><a id="2-1"></a>
 
-The first section of the configuration file is the `general` section that provides information about your project and the path to the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
+Users must provide the path to their model file using the `model_path` attribute. This can be either a Keras model file with a `.keras` filename extension (float model), a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
+In this example, the path to the MobileNet V2 model is provided in the `model_path` parameter. Please check out the [STM32 model zoo information](README_MODELS.md) for more image classification models.
+The `operation_mode` attribute should be set to `deployment` as follows:
 
 ```yaml
-general:
-   model_path:  ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft/mobilenet_v2_0.35_128_fft_int8.tflite
+model:
+   model_path:  ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft/mobilenetv2_a035_128_fft_int8.tflite
 
 operation_mode: deployment
 ```
-
-In the `general` section, users must provide the path to their model file using the `model_path` attribute. This can be either a Keras model file with a `.h5` filename extension (float model), a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
-In this example, the path to the MobileNet V2 model is provided in the `model_path` parameter. Please check out the [STM32 model zoo information](README_MODELS.md) for more image classification models.
 
 You must copy the `preprocessing` section to your own configuration file, to ensure you have the correct preprocessing parameters.
 
@@ -58,8 +57,12 @@ You must copy the `preprocessing` section to your own configuration file, to ens
 Configure the **dataset** section in the YAML file as follows:
 
 The `class_names` attribute specifies the classes that the model is trained on. This information could be provided in the YAML file directly, or in the `classes_file_path` so the `class_names` can be automatically recovered.
+Actually, in some datasets there are many classes like for example Imagenet (1000). To avoid listing all class names, which can be very unpractical, we use the `classes_file_path` parameter as follows:
 
-It avoids listing 1000 classes for the example of the Imagenet dataset used for this model.
+```yaml
+dataset:
+  classes_file_path: ../application_code/image_classification/STM32MP-LINUX/Resources/labels_imagenet_2012.txt
+```
 
 </details></ul>
 <ul><details open><summary><a href="#2-2-2">2.2.2 Preprocessing info</a></summary><a id="2-2-2"></a>
@@ -95,7 +98,6 @@ dataset:
    classes_file_path: ../application_code/image_classification/STM32MP-LINUX/Resources/labels_imagenet_2012.txt
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -128,14 +130,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -149,16 +151,16 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can depl
 ```bash
 python stm32ai_main.py
 ```
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_config.yaml](../config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_mpu_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_mpu_config.yaml
 ```
 
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../src/config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```
 
 When the application is running on the *STM32MPU* board, the LCD displays the following information:

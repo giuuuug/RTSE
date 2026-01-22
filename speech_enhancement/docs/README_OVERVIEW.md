@@ -1,55 +1,9 @@
 # Speech enhancement STM32 model zoo
 
-Remember that minimalistic yaml files are available [here](../src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that minimalistic yaml files are available [here](../config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/speech_enhancement/) are provided with their configuration .yaml file used to generate them. These are very good starting points to play with !
 
 ## <a id="">Table of contents</a>
 <details open><summary><a href="#0"><b>0. Before you start</b></a></summary><a id="0"></a>
-
-**Unlike the rest of the model zoo, the speech enhancement use case uses Pytorch**
-
-**This section of the model zoo uses Python 3.10. Bugs may arise if using another Python version.**
-
-
-Before you start, you'll need to install the appropriate Python packages. 
-
-**We suggest you do this in a new environment, as to not cause conflict with the packages used in the rest of the model zoo**
-
-To do this, follow the following instructions : 
-
-* Create a python virtual environment for the project:
-    ```
-    cd stm32ai-modelzoo-services
-    python -m venv st_zoo_se
-    ```
-  Activate your virtual environment
-  On Windows run:
-    ```
-    st_zoo_se\Scripts\activate.bat
-    ```
-  On Unix or MacOS, run:
-    ```
-    source st_zoo_se/bin/activate
-    ```
-* Or create a conda virtual environment for the project:
-    ```
-    cd stm32ai-modelzoo-services
-    conda create -n st_zoo_se
-    ```
-  Activate your virtual environment:
-    ```
-    conda activate st_zoo_se
-    ```
-  Install python 3.10:
-    ```
-    conda install -c conda-forge python<3.11
-    ```
-
-* Then install all the necessary python packages, the [requirements file](../torch_requirements.txt) contains it all. Navigate to `speech_enhancement/` and run the following command : 
-
-```
-pip install -r torch_requirements.txt
-```
-
 
 This README can be a bit detailed and overwhelming, so if you're new to this part of the model zoo, we suggest you check out some of the detailed tutorials. They will get you familiar with the different modes of operation of the model zoo.
 
@@ -63,14 +17,14 @@ This README can be a bit detailed and overwhelming, so if you're new to this par
 <details open><summary><a href="#1"><b>1. Model Zoo Overview</b></a></summary><a id="1"></a>
 <ul><details open><summary><a href="#1-1">1.1 YAML configuration file</a></summary><a id="1-1"></a>
 
-The model zoo is piloted solely from the [user_config.yaml](../user_config.yaml) located in the [src/](./) directory (where this README is located.)
+The model zoo is piloted solely from the [user_config.yaml](../user_config.yaml) located in the [pt/src/](../pt/src/) directory (where this README is located.)
 
 This README explains the structure and syntax used in this file, what each parameter does, and how to edit the config file to use all of the functionalities offered by the model zoo.
 
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Output directory structure</a></summary><a id="1-2"></a>
 
-When you run the Model Zoo, the files that get created are located in the src/experiment_outputs/ by default. This behaviour can be changed. Note that this folder will not be present until you have run the model zoo at least once.
+When you run the Model Zoo, the files that get created are located in the `./pt/src/experiment_outputs/` by default. This behaviour can be changed. Note that this folder will not be present until you have run the model zoo at least once.
 
 This directory contains the following files : 
 - The .hydra folder contains Hydra logs
@@ -109,15 +63,14 @@ If you're using the Valentini dataset, then all these conditions are already sat
 
 A description of the YAML language can be found at https://www.cloudbees.com/blog/yaml-tutorial-everything-you-need-get-started (many other sources are available on the Internet). We only cover here the extensions that have been made in the Model Zoo. 
 
-We use "attribute-value" instead of "key-value" as in the YAML terminology, the term "attribute" begin more relevant to our application. We may use the term "attribute" or "section" for nested attribute-value pairs constructs as the one shown below. In the example YAML code below, we may indifferently refer to "training" as an attribute or as a section.
+We use "attribute-value" instead of "key-value" as in the YAML terminology, the term "attribute" begin more relevant to our application. We may use the term "attribute" or "section" for nested attribute-value pairs constructs as the one shown below. In the example YAML code below, we may indifferently refer to "model" as an attribute or as a section.
 
 ```yaml
-training:
-   model:
-      name: yamnet
-      embedding_size: 256
-      input_shape: (64, 96, 1)
-      pretrained_weights: True
+model:
+  model_name: STFTTCNN # For training
+  state_dict_path: # For training and evaluating torch models
+  model_path: # For quantization, evaluation, benchmarking and deployment only
+
 ```
 
 The YAML code below shows the syntax extensions that have been made available with the Model Zoo.
@@ -177,7 +130,6 @@ The top-level sections of a configuration file are listed in the table below. Th
 - `training`, specifies your training setup, including batch size, number of epochs, optimizer, etc.
 - `quantization`, contains parameters related to quantization, such as n° of quantization samples, quantizer options, etc.
 - `evaluation` contains parameters related to model evaluation
-- `stedgeai`, specifies the STM32Cube.AI configuration to benchmark your model on a board, including memory footprints, inference time, etc.
 - `tools`, specifies paths and options to the ST tools used for benchmarking and deployment
 - `benchmarking` specifies the board to benchmark on.
 - `deployment`, contains parameters used for deployment on STM32N6 target.
@@ -185,13 +137,12 @@ The top-level sections of a configuration file are listed in the table below. Th
 - `hydra`, specifies the folder to save Hydra logs.
 
 </details></ul>
-<ul><details open><summary><a href="#3-4">3.4 Global settings and model path</a></summary><a id="3-4"></a>
+<ul><details open><summary><a href="#3-4">3.4 Global settings</a></summary><a id="3-4"></a>
 
 The `general` section and its attributes are shown below.
 
 ```yaml
 general:
-   general:
   project_name: speech_enhancement_project
   logs_dir: logs # Name of the directory where logs are saved
   saved_models_dir: saved_models # Name of the directory where models are saved
@@ -206,15 +157,15 @@ You can also not use a GPU at all by setting `device`  to `cpu` in the appropria
 </details></ul>
 
 
-<ul><details open><summary><a href="#3-4">3.4 Model settings</a></summary><a id="3-4"></a>
+<ul><details open><summary><a href="#3-5">3.5 Model settings</a></summary><a id="3-5"></a>
 
 Information about the model you wish to train is provided in the `model` and `model_specific` sections of the configuration file, as show in the YAML code below : 
 
 ```yaml
 model:
-  model_type: STFTTCNN # For training
+  model_name: STFTTCNN # For training
   state_dict_path: # For training or evaluation. Used to start training/evaluating from specific parameters.
-  onnx_path: # For quantization, evaluation, benchmarking and deployment only
+  model_path: # For quantization, evaluation, benchmarking and deployment only
 
 model_specific:
   # Parameters specific to your model type, e.g. n_blocks, tcn_latent_dim for STFT-TCNN
@@ -226,19 +177,19 @@ model_specific:
   mask_activation: "tanh"
 ```
 
-The `model_type` attribute designates the architecture of the model you want to train. For now, only the STFTCNN architecture is available. The STFTTCNN is an adaptation of the TCNN model in the frequency domain. See the original paper here : (https://ieeexplore.ieee.org/document/8683634). This attribute is ONLY used for training, and the evaluation of float torch models (but NOT ONNX models).
+The `model_name` attribute designates the architecture of the model you want to train. For now, only the STFTCNN architecture is available. The STFTTCNN is an adaptation of the TCNN model in the frequency domain. See the original paper here : (https://ieeexplore.ieee.org/document/8683634). This attribute is ONLY used for training, and the evaluation of float Torch models (but NOT ONNX models).
 
-You can also train a recurrent model composed of a 1D pointwise convolutional encoder, an LSTM stack and a 1D pointwise convolutional decoder by setting `model_type` to `ConvLSTMDenoiser`. **NOTE THAT DEPLOYMENT IS NOT SUPPORTED YET FOR  THIS MODEL**. You can still train and evaluate tthis model.
+You can also train a recurrent model composed of a 1D pointwise convolutional encoder, an LSTM stack and a 1D pointwise convolutional decoder by setting `model_name` to `ConvLSTMDenoiser`. **NOTE THAT DEPLOYMENT IS NOT SUPPORTED YET FOR  THIS MODEL**. You can still train and evaluate tthis model.
 
-Additionally, you can train a custom model by setting `model_type` to `Custom`, and defining your architecture in [this python file](../src/models/custom.py) See section <a href="#4-2"> 4.2 </a> of this README for more details.
+Additionally, you can train a custom model by setting `model_name` to `Custom`, and defining your architecture in [this python file](../pt/src/models/custom.py) See section <a href="#4-2"> 4.2 </a> of this README for more details.
 
 The `state_dict_path` attribute lets you provide a Pytorch state dict that is loaded into your model before training starts. This can be useful to start training from specific model weights. 
 
-It also lets you evaluate a torch model, by providing both `model_type` and `state_dict_path`. Note that you can evaluate both Torch and ONNX models, and when that you do not need to provide a `model_type` or `state_dict_path` when evaluating an ONNX model. See the [Evaluation tutorial README](./README_EVALUATION.md) for more details.
+It also lets you evaluate a Torch model, by providing both `model_name` and `state_dict_path`. Note that you can evaluate both Torch and ONNX models, and when that you do not need to provide a `model_name` or `state_dict_path` when evaluating an ONNX model. See the [Evaluation tutorial README](./README_EVALUATION.md) for more details.
 
-The `onnx_path` attribute is used for evaluation, quantization, benchmarking and deployment.
+The `model_path` attribute is used for evaluation, quantization, benchmarking and deployment.
 
-The `model_specific` block lets you modify parameters of the specific model_type you chose. It will contain different attributes for different models. For details on what each attribute does, refer to the rest of this section, or to the docstring of the appropriate model class (found in [models/](../src/models/))
+The `model_specific` block lets you modify parameters of the specific `model_name` you chose. It will contain different attributes for different models. For details on what each attribute does, refer to the rest of this section, or to the docstring of the appropriate model class (found in [models/](../pt/src/models/)).
 
 **NOTE WHEN USING CUSTOM MODELS : Currently, the model zoo expects models to accept tensors of shape (batch, n_fft // 2  + 1, sequence_length) as input, corresponding to magnitude spectrograms. Make sure this is the case for your custom model.** 
 
@@ -248,11 +199,11 @@ The model outputs a mask of the same shape as its input, and this mask is applie
 
 Therefore, we expect all models to take magnitude spectrograms as input, i.e. tensors of the shape (batch, n_fft // 2 + 1, sequence_length), and output tensors of the same shape, corresponding to the mask.
 
-- `model_type` : Model class to use. Currently, must be one of `STFTTCNN`, `ConvLSTMDenoiser` or `Custom` (the uppercase is important) (Note that `ConvLSTMDenoiser` models cannot be deployed yet)
-- `state_dict_path` : Path to a Pytorch state dict. Optional. Must be compatible with the specified `model_type` and `model_specific` arguments provided. Used for training and evaluation.
+- `model_name` : Model class to use. Currently, must be one of `STFTTCNN`, `ConvLSTMDenoiser` or `Custom` (the uppercase is important) (Note that `ConvLSTMDenoiser` models cannot be deployed yet).
+- `state_dict_path` : Path to a Pytorch state dict. Optional. Must be compatible with the specified `model_name` and `model_specific` arguments provided. Used for training and evaluation.
 If provided, training starts from the weights in the state dict, and evaluation uses the weights in the state dict. If not provided, training starts from random weights.
-- `onnx_path` : Path to an ONNX model. Used for evaluation, quantization, benchmarking and deployment.
-**If running evaluation, `onnx_path` takes precedence over `state_dict_path`, meaning that if both are provided, the ONNX model will be evaluated.**
+- `model_path` : Path to an ONNX model. Used for evaluation, quantization, benchmarking and deployment.
+**If running evaluation, `model_path` takes precedence over `state_dict_path`, meaning that if both are provided, the ONNX model will be evaluated.**
 
 - `model_specific` attributes for the `STFTTCNN` class. For details on the model, see <a href="#A-1"> Appending A.1 </a>
     - `n_blocks` : Number of TCN blocks 
@@ -271,14 +222,14 @@ If provided, training starts from the weights in the state dict, and evaluation 
     - `mask_activation` : Must be `tanh` or `sigmoid`. Activation function for the output of the model. Sigmoid activation tends to provide models that remove more noise, but degrade speech more.
 </details></ul>
 
-<ul><details open><summary><a href="#3-5">3.5 Dataset</a></summary><a id="3-5"></a>
+<ul><details open><summary><a href="#3-6">3.6 Dataset</a></summary><a id="3-6"></a>
 
 The `dataset` section and its attributes are shown in the YAML code below.
 Detailed explanations of each parameter are provided at the end of this section.
 
 ```yaml
 dataset:
-  name: valentini # Or "custom"
+  dataset_name: valentini # Or "custom"
   root_folder: /local/datasets/Valentini # Root folder of dataset
   n_speakers: 56 # For Valentini, 28 or 56 speaker dataset. Does nothing if name is "custom"
   file_extension: '.wav' # Extension of audio files. Valentini dataset uses .wav
@@ -330,9 +281,9 @@ The use of quantization datasets is covered in the "Quantization" section of the
 - `noisy_test_files_path`: *string* Path to the folder containing noisy test audio samples
 
 </details></ul>
-<ul><details open><summary><a href="#3-6">3.6 Audio preprocessing</a></summary><a id="3-6"></a>
+<ul><details open><summary><a href="#3-7">3.7 Audio preprocessing</a></summary><a id="3-7"></a>
 
-The general flow of inference is the following : A complex spectrogram of the noisy audio is computed by peforming a Short-Term Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
+The general flow of inference is the following : A complex spectrogram of the noisy audio is computed by peforming a Short-time Fourier Transform, and the corresponding magnitude spectrogram is given as input to the model. 
 
 The model outputs a mask of the same shape as its input, and this mask is applied to the complex spectrogram. The masked complex spectrogram is then transformed back to the time domain by inverse STFT. This gives us the denoised time-domain signal.
 
@@ -354,7 +305,7 @@ preprocessing:
 ```
 
 
-**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported, but other pipelines are present in [preprocessing/freq_pipeline.py](../src/preprocessing/freq_pipeline.py). You can experiment with these, but be ready for bugs.
+**IMPORTANT NOTE :** Currently, only the `LibrosaSpecPipeline` pipeline type is supported, but other pipelines are present in [./pt/src/preprocessing/freq_pipeline.py](../pt/src/preprocessing/freq_pipeline.py). You can experiment with these, but be ready for bugs.
 
 - `pipeline_type` : Type of preprocessing pipeline to use. Currently, should be left to `LibrosaSpecPipeline`.
 - `peak_normalize` : *bool*, if True, audio clips are peak normalized before STFT.
@@ -365,19 +316,19 @@ preprocessing:
 - `window` : *string*, Window type. Passed to librosa.filters.get_window().
 - `center` : *boolean*, If True, frames are centered, i.e. frame `n` is centered around sample number `n * hop_length`. If False, frames begin at sample number `n * hop_length`.
 
-**Important :** If training a model with a loss that requires an ISTFT (for example, SNR or SI-SNR loss), keep `center` to `True`, as the `torch.istft` function we use to have a differentiable inverse STFT implementation does NOT accept `center` = `False`
+**Important :** If training a model with a loss that requires an ISTFT (for example, SNR or SI-SNR loss), keep `center` to `True`, as the `torch.istft` function we use to have a differentiable inverse STFT implementation does NOT accept `center` = `False`.
 
 - `power` : *float*, Exponent for the magnitude spectrogram. Set to 1 for energy spectrogram, and 2 for power spectrogram.
 
 Different models are trained using different set of preprocessing parameters, and using different ones may lead to poor performance. Please refer to section <a href="#1-1"> 1.1 </a> of this README for instructions on how to retrieve the configuration files used to train the different pretrained models provided in the zoo.
 
 </details></ul>
-<ul><details open><summary><a href="#3-7">3.7 Training</a></summary><a id="3-7"></a>
+<ul><details open><summary><a href="#3-8">3.8 Training</a></summary><a id="3-8"></a>
 
 A 'training' section is required in all the operation modes that include a training, namely 'training', 'tqeb' and 'tqe'.
 
 The YAML code below is a typical example of 'training' section.
-A detailed explanation of every parameter is provided at the end of this section 
+A detailed explanation of every parameter is provided at the end of this section.
 
 ```yaml
  device: cuda:0
@@ -427,7 +378,7 @@ Some comments :
 
 - Use the `device` attribute to choose where to run your training. `cpu` runs on CPU, `cuda:0` runs on the first CUDA-enabled GPU, `cuda:1` on the second, etc.
 - `optimizer` accepts any optimizer found in the [torch.optim](https://pytorch.org/docs/stable/optim.html) module.
-- `optimizer_arguments` is a dict passed directly to your chosen torch optimizer. You can give a lot more arguments than just learning rate (e.g. momentum)
+- `optimizer_arguments` is a dict passed directly to your chosen Torch optimizer. You can give a lot more arguments than just learning rate (e.g. momentum)
 - `loss` can be one of four different losses : 
 
     -`spec_mse` (MSE between the clean and denoised complex spectrograms), 
@@ -461,9 +412,9 @@ The best model obtained at the end of the training is saved in the 'experiments_
 - `device` : *string* A valid `torch.device` identifier. Use `cpu` to run your training on CPU, `cuda` to run on GPU, and `cuda:n` to run on a specific GPU
 - `epochs` : *int*, number of epochs to train for
 - `optimizer` : *string*, Type of optimizer to use. Must be an optimizer found in the [torch.optim](https://pytorch.org/docs/stable/optim.html) module.
-- `optimizer_arguments` : *dict* : dict passed directly to your chosen torch optimizer. You can give a lot more arguments than just learning rate (e.g. momentum)
+- `optimizer_arguments` : *dict* : dict passed directly to your chosen Torch optimizer. You can give a lot more arguments than just learning rate (e.g. momentum)
 
-- `loss` : *string*, one of `spec_mse`, `wave_mse`, `wave_snr` or `wave_sisnr`. Beware that the latter three require `processing.center = True`, because the torch ISTFT function used during training requires it.
+- `loss` : *string*, one of `spec_mse`, `wave_mse`, `wave_snr` or `wave_sisnr`. Beware that the latter three require `processing.center = True`, because the Torch ISTFT function used during training requires it.
 - `batching_strategy` : *string*, one of `trim` or `pad`. See above for a detailed explanation. In general, you should use `pad`. If using `trim` keep the batch size low.
 - `num_dataloader_workers` : *int*, Number of CPU workers allocated to dataloaders. Should divide `batch_size` **IMPORTANT : If on Windows, and encountering crashes during training, set to 0**
 - `batch_size` : *int*, Batch size used to train model. Keep low if using `trim` batching strategy.
@@ -487,11 +438,11 @@ The best model obtained at the end of the training is saved in the 'experiments_
 - `opset_version`: *int* : Version of the main ONNX opset to use when exporting trained models.
 
 </details></ul>
-<ul><details open><summary><a href="#3-8">3.8 Quantization</a></summary><a id="3-8"></a>
+<ul><details open><summary><a href="#3-9">3.9 Quantization</a></summary><a id="3-9"></a>
 
 This section is used to configure the quantization process, which optimizes the model for efficient deployment on embedded devices by reducing its memory usage (Flash/RAM) and accelerating its inference time, with minimal degradation in model accuracy.
 
-**The model zoo only supports post-training quantization**
+**The model zoo only supports post-training quantization.**
 
 If you run one of the operation modes that includes a model quantization, you need to include a "quantization" section in your configuration file, as shown in the YAML code below. You still need a dataset, mode and preprocessing section, but they are omitted here for the sake of readability.
 
@@ -499,7 +450,7 @@ Consult the [quantization tutorial README](./README_QUANTIZATION.md) for a detai
 
 ```yaml
 model:
-  onnx_path: path/to/your/float/model.onnx
+  model_path: path/to/your/float/model.onnx
 
 quantization:
   # N° of samples or fraction of training set to include in quantization set.
@@ -520,12 +471,14 @@ quantization:
   static_sequence_length: 40 
   static_axis_name: "seq_len"
   
-  # The following parameters are passed directly to ONNXruntime's quantize_static function
-  per_channel: True # 
-  calibration_method: "MinMax" # Calibration method of ONNX quantizer
-  op_types_to_quantize:  # Op types to quantize. Leave empty to quantize all defaults for the ONNX quantizer.
+  # The following parameters are passed to ONNXruntime's quantize_static function
+  granularity : per_channel 
   reduce_range: False
-  extra_options: {"CalibMovingAverage" : True} # Add extra quantizer options in this dict.
+  onnx_quant_parameters:  
+    op_types_to_quantize: ["Add", "Conv", "Relu"] # Op types to quantize. Leave empty to quantize all defaults for the ONNX quantizer.
+    calibrate_method: "MinMax" # Calibration method of ONNX quantizer
+  onnx_extra_options: 
+    CalibMovingAverage: True # Add extra quantizer options in this dict.
 ```
 
 Some comments : 
@@ -554,17 +507,17 @@ However, float models provided for quantization must have input shape (batch, n_
 
 - **The following parameters are directly passed to onnxruntime's quantize_static() function**
 
-- `per_channel` : *bool*, if True, enables per-channel quantization. If False, uses per-tensor quantization.
-- `calibration_method` : *str*, calibration method used to determine scale/offset of QDQ layers.
-- `op_types_to_quantize`: *list of str*, ONNX op types to quantize. Leave empty to quantize all ops. **WARNING** : Some ONNX ops will not be quantized by default unless specified here (e.g. LSTM). This behaviour is caused by the onnxruntime package. If using an STFTTCNN, leaving this field empty will quantize every op.
-
+- `granularity` : *string*, can be per_channel or per_tensor
+- `onnx_quant_parameters` : *Field* of parameters as below:
+  - `calibrate_method` : *str*, calibration method used to determine scale/offset of QDQ layers.
+  - `op_types_to_quantize`: *list of str*, ONNX op types to quantize. Leave empty to quantize all ops. **WARNING** : Some ONNX ops will not be quantized by default unless specified here (e.g. LSTM). This behaviour is caused by the onnxruntime package. If using an STFTTCNN, leaving this field empty will quantize every op.
 - `reduce_range` : *bool*, if True, weights are quantized to 7 bit instead of 8 bit.
-- `extra_options` : extra options to pass to `quantize_static()`. See [here](https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/python/tools/quantization/quantize.py#L461) for more details. In particular, we recommend keeping `CalibMovingAverage : True`
+- `onnx_extra_options` : extra options to pass to `quantize_static()`. See [here](https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/python/tools/quantization/quantize.py#L461) for more details. In particular, we recommend keeping `CalibMovingAverage : True`
 
 
 
 </details></ul>
-<ul><details open><summary><a href="#3-9">3.9 Model evaluation</a></summary><a id="3-9"></a>
+<ul><details open><summary><a href="#3-10">3.10 Model evaluation</a></summary><a id="3-10"></a>
 
 The YAML code below shows how you can evaluate a speech enhancement model. You still need a dataset, model and preprocessing section, but they are omitted here for the sake of readability.
 
@@ -572,7 +525,7 @@ For more details, consult the [Evaluation tutorial README](./README_EVALUATION.m
 
 ```yaml
 model:
-  onnx_path: path/to/your/model.onnx
+  model_path: path/to/your/model.onnx
 evaluation:
   logs_path: eval_logs/ # Path to evaluation logs, appended to general.logs_dir
   device: "cuda:0" # Only used when evaluating torch models.
@@ -584,7 +537,7 @@ evaluation:
 
 Some comments : 
 
-- You can evaluate both Pytorch models and ONNX models. To evaluate a Pytorch model, use the `model_type` and `state_dict_path` attributes in the `model` section. To evaluate an ONNX model, use the `onnx_model_path` attribute in the `model` section.
+- You can evaluate both Pytorch models and ONNX models. To evaluate a Pytorch model, use the `model_name` and `state_dict_path` attributes in the `model` section. To evaluate an ONNX model, use the `onnx_model_path` attribute in the `model` section.
 
 - You can evaluate both quantized and float ONNX models.
 
@@ -600,14 +553,14 @@ To evaluate a model with a dynamic sequence length axis, simply leave `static_se
 
 **IMPORTANT NOTE : If you evaluate a model with a STATIC sequence length axis, clips will be trimmed or padded to that sequence length. This can heavily skew evaluation results, meaning the results may not be representative**
 
-- `device` : *string*, Pytorch device to use for evaluating a torch model. Is ignored if evaluating an ONNX model
+- `device` : *string*, Pytorch device to use for evaluating a Torch model. Is ignored if evaluating an ONNX model
 - `logs_path` : *string* : Path under which to save the evaluation logs
 - `fixed_sequence_length` : *int*, If evaluating a static input shape model, length of the sequence length axis. See above for a detailed explanation. We heavily recomment evaluating dynamic input shape models instead of static input shape models, which should only be used for deployment.
 
 </details></ul>
-<ul><details open><summary><a href="#3-10">3.10 STM32 tools</a></summary><a id="3-10"></a>
+<ul><details open><summary><a href="#3-11">3.11 STM32 tools</a></summary><a id="3-11"></a>
 
-This section covers the usage of the STM32-X-CUBEAI tool, which benchmarks ONNX models, and converts them to C code
+This section covers the usage of the STEdgeAI tool, which benchmarks ONNX models, and converts them to C code
 
 The `tools` section in the config file looks like this : 
 
@@ -617,28 +570,26 @@ tools:
 
 tools:
   stedgeai:
-    version: 10.0.0 # 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/Users/<>/stedgeai_10_RC1/Utilities/windows/stedgeai.exe
   path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe
 ```
 where : 
-- `version` - The **STM32Cube.AI** version used to benchmark the model, e.g. **10.0.0**. This must be at least 10.0.0 if benchmarking on STM32N6.
 - `optimization` - *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
-- `on_cloud` : Set to True to use the STM32 developer cloud to benchmark and convert models. You will need to make an account at [https://stedgeai-dc.st.com/home](https://stedgeai-dc.st.com/home) and will be prompted for your credentials at runtime. If you use the developer cloud, you do not need to set the next two parameters.
+- `on_cloud` : Set to True to use the STEdgeAI developer cloud to benchmark and convert models. You will need to make an account at [https://stedgeai-dc.st.com/home](https://stedgeai-dc.st.com/home) and will be prompted for your credentials at runtime. If you use the developer cloud, you do not need to set the next two parameters.
 - `path_to_stedgeai` - *Path* to stedgeai executable file. Is only used if `on_cloud` is set to False
 - `path_to_cubeIDE` - *Path* to CubeIDE executable file. Is only used if `on_cloud` is set to False
 
 </details></ul>
-<ul><details open><summary><a href="#3-11">3.11 Benchmarking</a></summary><a id="3-15"></a>
+<ul><details open><summary><a href="#3-12">3.12 Benchmarking</a></summary><a id="3-15"></a>
 
 The YAML code below shows how to benchmark a model on an STM32 board. You can not benchmark Pytorch models directly, they must be exported to ONNX first.
 
 ```yaml
 
 model:
-  onnx_path: path/to/your/model.onnx
+  model_path: path/to/your/model.onnx
 
 operation_mode: benchmarking
 
@@ -654,7 +605,7 @@ The `board` attribute is used to provide the name of the STM32 board to benchmar
 For speech enhancement, the only board available for deployment is the STM32N6570-DK, and so we recommend setting `board` to 'STM32N6570-DK'.
 
 </details></ul>
-<ul><details open><summary><a href="#3-12">3.12 Deployment</a></summary><a id="3-12"></a>
+<ul><details open><summary><a href="#3-13">3.13 Deployment</a></summary><a id="3-13"></a>
 
 The YAML code below shows how to deploy a model on an STM32 board.
 Note that you need a preprocessing section, even though no data is being preprocessed. 
@@ -669,7 +620,7 @@ This is because the parameters in these sections are being used to create look-u
 
 ```yaml
 model:
-  onnx_path: path/to/your/quantized/model.onnx
+  model_path: path/to/your/quantized/model.onnx
   
 preprocessing:
   pipeline_type: LibrosaSpecPipeline # Do not change if unsure.
@@ -684,7 +635,6 @@ preprocessing:
 
 tools:
   stedgeai:
-    version: 10.0.0 # 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -711,19 +661,20 @@ deployment:
   hardware_setup:
     serie: STM32N6
     board: STM32N6570-DK
-  build_conf : "N6 Audio Bare Metal" # this is the default configuration
-  # build_conf : "N6 Audio Thread X"
-  # build_conf : "N6 Audio Bare Metal Low Power"
-  # build_conf : "N6 Audio Thread X Low Power"
+  build_conf : "BM" # this is the default configuration
+  # build_conf : "BM_LP"
+
 ```
 
 A few comments : 
 
-- The `frames_per_patch` attributes corresponds to how many spectrogram frames get denoised per inference on the board. How much this represents in terms of time depends on your preprocessing parameters. For example, with a sampling rate of 16000 and a hop length of 160, one inference is done every 300 ms. In turn, this induces a 300 ms delay between audio acquisition and denoised audio playback.
+- The `frames_per_patch` attributes corresponds to how many spectrogram frames get denoised per inference on the board. How much this represents in terms of time depends on your preprocessing parameters. For example, with a sampling rate of 16000 and a hop length of 160 (corresponding to 10 ms), and a `frames_per_patch` value of 30, one inference is done every 300 ms. In turn, this induces a 300 ms delay between audio acquisition and denoised audio playback.
 
 - The model is allowed to look ahead a few frames into the future, to attenuate patch boundary artifacts on its output. It is also allowed to look the same number of frames into the past. This number of lookahead frames is controlled by the `lookahead_frames` attribute. If you reduce this attribute too much, or if your model's receptive field increases, you may see the patch boundary artifacts appear again.
 
-**VERY IMPORTANT : MAKE SURE YOUR MODEL'S INPUT SHAPE IS COMPATIBLE WITH THESE PARAMETERS**
+- Note that the total length of a patch fed to the model during inference is equal to `frames_per_patch + 2*lookahead_frames`. Using the values in the above example, this means each patch contains 40 frames (30+5*2). One inference is still done every 300 ms, but the induced delay is 400 ms.
+
+**VERY IMPORTANT : MAKE SURE YOUR MODEL'S INPUT SHAPE IS COMPATIBLE WITH THESE PARAMETERS !**
 
 **Your model's input shape should be (1, n_fft // 2 + 1, frames_per_patch + 2 * lookahead_frames)**
 If you quantize your model using the model zoo, simply set the `static_sequence_length` attribute to `frames_per_patch` + 2 * `lookahead_frames`. See the [Quantization README](./README_QUANTIZATION.md) for additional details.
@@ -752,11 +703,11 @@ Note that this filter is present even when the denoiser is deactivated using the
 
 You may want to train your own model rather than a model or architecture from the Model Zoo.
 
-This can be done by defining your model architecture in [models/custom.py](../src/models/custom.py). Define your model under the `Custom` class provided in the file, and set the `model_type` argument in your config file to `Custom`, like so : 
+This can be done by defining your model architecture in [models/custom.py](../pt/src/models/custom.py). Define your model under the `Custom` class provided in the file, and set the `model_name` argument in your config file to `Custom`, like so : 
 
 ```yaml
   model:
-   model_type: Custom
+   model_name: Custom
   
   model_specific:
    # Your custom model params here
@@ -768,7 +719,7 @@ You can also set parameters for your custom model directly from the config file 
 
 You may want to resume a training that you interrupted or that crashed.
 
-When training a model, a snapshot is periodically saved in the current experiment output directory tree. By default, The snapshot is in the 'experiments_outputs/<date-and-time\>/training_logs' directory and is named 'training_snapshot.pth'
+When training a model, a snapshot is periodically saved in the current experiment output directory tree. By default, The snapshot is in the `./pt/src/experiments_outputs/<date-and-time\>/training_logs` directory and is named 'training_snapshot.pth'
 
 To resume a training from a snapshot, simply provide the path to this snapshot in the `snapshot_path` attribute of the training section, like so : 
 
@@ -810,7 +761,7 @@ The parameters related to the STFT-TCNN are the following :
 - `init_dilation` : Initial dilation factor. Dilation factor in each residual block is `init_dilation` ^(i-1). Max dilation factor is equal to (`init_dilation`^`num_layers` - 1)
 - `mask_activation` : Must be `tanh` or `sigmoid`. Activation function for the output of the model. Sigmoid activation tends to provide models that remove more noise, but degrade speech more.
 
-These parameters should be placed in the `model_specific` section of the config file. See section <a href = "#3-4"> 3.4 Model settings </a>.
+These parameters should be placed in the `model_specific` section of the config file. See section <a href = "#3-5"> 3.5 Model settings </a>.
 
 </details>
 
@@ -832,6 +783,6 @@ The parameters related to this model are the following :
       mask_activation: "sigmoid"
     - `mask_activation` : Must be `tanh` or `sigmoid`. Activation function for the output of the model. Sigmoid activation tends to provide models that remove more noise, but degrade speech more.
 
-These parameters should be placed in the `model_specific` section of the config file. See section <a href = "#3-4"> 3.4 Model settings </a>.
+These parameters should be placed in the `model_specific` section of the config file. See section <a href = "#3-5"> 3.5 Model settings </a>.
 
 </details>

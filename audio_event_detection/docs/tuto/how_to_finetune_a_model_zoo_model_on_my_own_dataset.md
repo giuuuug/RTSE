@@ -1,12 +1,12 @@
-# How can I finetune a ST Model Zoo model on my own dataset?
+# How can I finetune a ST Model Zoo model on my own dataset ?
 
 With ST Model Zoo, you can easily pick an already pretrained available model and finetune it on your own dataset.
 
 ## Pick a pretrained model
 
-A choice of model architectures pretrained on multiple datasets can be found [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/pretrained_models).
+A choice of model architectures pretrained on multiple datasets can be found [here](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/audio_event_detection).
 
-## Operation modes:
+## Operation modes
 
 Depending on what you want to do, you can use the operation modes below:
 - Training:
@@ -25,7 +25,7 @@ For any details regarding the parameters of the config file, you can look here:
 
 ## Finetune the model on my dataset
 
-As usual, to retrain the model we edit the user_config.yaml and run the stm32ai_main.py python script (both found in /src).
+As usual, to retrain the model we edit the user_config.yaml and run the stm32ai_main.py python script.
 
 The standard format supported by training scripts for audio event detection is the ESC-50 format. 
 However, it is also possible to use the [FSD50K dataset](https://zenodo.org/records/4060432) as-is in the model zoo, without converting it to the ESC format yourself.
@@ -45,7 +45,6 @@ The most important parts here are to define:
 
 general:
   project_name: aed_project
-  model_path: 
   logs_dir: logs
   saved_models_dir: saved_models
   global_seed: 120
@@ -55,8 +54,13 @@ general:
 
 operation_mode: training
 
+model: 
+  model_name: yamnet_e256
+  input_shape: (64, 96, 1)
+  pretrained: True # Set to True if you want to use pretrained weights provided in the model zoo
+                           # Yamnet-256 can only be used with pretrained weights.
 dataset:
-  name: custom # ESC-50 format dataset
+  dataset_name: custom # ESC-50 format dataset
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves'] # your classes
   file_extension: '.wav'
   training_audio_path: ./datasets/ESC-50/audio # Mandatory
@@ -123,12 +127,6 @@ data_augmentation:
     mask_value : 0
 
 training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: yamnet
-    embedding_size: 256
-    input_shape: (64, 96, 1)
-    pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
-                             # Yamnet-256 can only be used with pretrained weights.
   fine_tune: False # Set to True if you want to fine-tune a pretrained model from the zoo
   dropout: 0
   batch_size: 16
@@ -150,14 +148,13 @@ training:
       mode: max
       restore_best_weights: true
       patience: 60
-#  trained_model_path: trained.h5   # Optional, use it if you want to save the best model at the end of the training to a path of your choice
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/yamnet_256_esc_10_second_run
+    dir: ./tf/src/experiments_outputs/yamnet_256_esc_10_second_run
   
 ```
 
@@ -167,7 +164,6 @@ Below is an example using the FSD50K dataset. Only the dataset part changes a li
 # user_config.yaml with FSD50K format
 general:
   project_name: aed_project
-  model_path: 
   logs_dir: logs
   saved_models_dir: saved_models
   global_seed: 120
@@ -177,8 +173,14 @@ general:
 
 operation_mode: training 
 
+model: 
+  model_name: yamnet_e256
+  input_shape: (64, 96, 1)
+  pretrained: True # Set to True if you want to use pretrained weights provided in the model zoo
+                           # Yamnet-256 can only be used with pretrained weights.
+
 dataset:
-  name: fsd50k # FSD50K format dataset
+  dataset_name: fsd50k # FSD50K format dataset
   class_names: ['Speech', 'Gunshot_and_gunfire', 'Crying_and_sobbing', 'Knock', 'Glass'] # your classes
   file_extension: '.wav'
   training_audio_path: # overwritten by the dataset_specific path below
@@ -258,12 +260,6 @@ data_augmentation:
     mask_value : 0
 
 training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: yamnet
-    embedding_size: 256
-    input_shape: (64, 96, 1)
-    pretrained_weights: True # Set to True if you want to use pretrained weights provided in the model zoo
-                             # Yamnet-256 can only be used with pretrained weights.
   fine_tune: False # Set to True if you want to fine-tune a pretrained model from the zoo
   dropout: 0
   batch_size: 32
@@ -285,23 +281,22 @@ training:
       mode: max
       restore_best_weights: true
       patience: 60
-#  trained_model_path: trained.h5   # Optional, use it if you want to save the best model at the end of the training to a path of your choice
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/whatever
+    dir: ./tf/src/experiments_outputs/whatever
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples)
 
 You can also look at the configuration files used to obtain the pretrained yamnet available in the ST Model Zoo:
 - [FSD50K pretrained yamnet yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/main/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/fsd50k/yamnet_256_64x96_tl/without_unknown_class/yamnet_256_64x96_tl_config.yaml)
 - [ESC-10 pretrained yamnet yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/main/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_256_64x96_tl/yamnet_256_64x96_tl_config.yaml)
 
-## Run the script:
+## Run the script
 
 Edit the user_config.yaml then open a terminal (make sure to be in the UC folder). Finally, run the command:
 

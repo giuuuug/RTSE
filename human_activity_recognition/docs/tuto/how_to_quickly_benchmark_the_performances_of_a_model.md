@@ -26,7 +26,7 @@ The most important parts here are to define:
 ```yaml
 # user_config.yaml 
 
-general:
+model:
   # path to the ST Model Zoo model to benchmark
   model_path: ../../../stm32ai-modelzoo/human_activity_recognition/ign/ST_pretrainedmodel_custom_dataset/mobility_v1/ign_wl_24/ign_wl_24.h5
 
@@ -35,7 +35,6 @@ operation_mode: benchmarking
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True # True for online benchmark, False for local benchmark
     # if False, we need the path to st edge AI, see below
@@ -60,7 +59,7 @@ hydra:
 
 ## Run the script:
 
-Edit the user_config.yaml then open a terminal (make sure to be in the folder /src). Finally, run the command:
+Edit the user_config.yaml then open a terminal (make sure to be in the folder /human_activity_recognition/). Finally, run the command:
 
 ```powershell
 python stm32ai_main.py
@@ -72,12 +71,12 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Local benchmarking:
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires internet connection and making a free account. Or, alternatively, you can install [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
  
 For local installation :
  
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
+- If opting for using [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
 The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
 ## Available boards for benchmark:

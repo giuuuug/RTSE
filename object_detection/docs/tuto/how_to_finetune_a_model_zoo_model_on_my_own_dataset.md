@@ -9,16 +9,16 @@ Find the model you would like to use based on it's input size and performance on
 
 ## Finetune the model on my dataset
 
-For the object detection use case, the dataset must be of YOLO Darknet format and create .tfs file using our dataset preparation scripts [More information](./how_to_use_my_own_object_detection_dataset.md)
+For the object detection use case, the dataset must be of **TFS TensorFlow format** format as described in the [how to article](./how_to_use_my_own_object_detection_dataset.md)
 A simple example dataset to use could be for example this one: [Pascal VOC](https://public.roboflow.com/object-detection/pascal-voc-2012/1).
 
 ### Operation modes:
 
 Depending on what you want to do, you can use the operation modes below:
 - Training:
-    - To simply train the model on my data and get as output the trained tensorflow model (.h5).
+    - To simply train the model on my data and get as output the trained tensorflow model (.keras).
 - Chain_tqe:
-    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.h5 and .tflite)
+    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.keras and .tflite)
 - Chain_tqeb:
     - To train, quantize, evaluate and benchmark the quantized model in one go.
 
@@ -35,9 +35,9 @@ Here we use a st_sst_mobilenet_v1 with an input size of (224,224,3)
 For simpler operation mode, you can delete the part not needed if you want.
 
 The most important parts here are to define:
-- The model type in general (from the pretrained_model folder)
+- The model type in model section (from the pretrained_model folder)
 - The operation mode
-- The dataset paths (need to be .tfs files, look [here](./how_to_use_my_own_object_detection_dataset.md))
+- The dataset name, format and paths (need to be .tfs files, look [here](./how_to_use_my_own_object_detection_dataset.md))
 - The preprocessing
 - The input_size, pretrained weight and training parameters
 - The benchmarking, quantization and deployment part if requested by the chosen operation mode
@@ -47,16 +47,19 @@ The most important parts here are to define:
 
 general:
   project_name: my_retraining
-  model_type: st_ssd_mobilenet_v1
   logs_dir: logs
   saved_models_dir: saved_models
   gpu_memory_limit: 16
   global_seed: 127
 
+model:
+  model_type: st_yoloxn
+
 operation_mode: chain_tqeb
 
 dataset:
-  name: custom
+  format: tfs
+  dataset_name: custom_dataset
   class_names: [<your-classes>]
   training_path: <train-set-root-directory>  
   validation_path: <validation-set-root-directory>  
@@ -128,7 +131,6 @@ benchmarking:
 # Needed if quantization,benchmarking in operation mode
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -144,11 +146,11 @@ deployment:
     board: STM32H747I-DISCO
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
   
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 ## Run the script:

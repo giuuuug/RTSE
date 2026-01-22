@@ -22,7 +22,7 @@ To install X-LINUX-AI on your target device, please follow the dedicated wiki pa
 
 To facilitate the deployment and avoid tools installation, the MPU deployment is based on [ST Edge AI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and making a free account.
 
-You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](./README_MODELS.md) or your own pose estimation model. Please refer to the YAML file [deployment_mpu_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](./README_MODELS.md) or your own pose estimation model. Please refer to the YAML file [deployment_mpu_config.yaml](../config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
 As an example, we will show how to deploy the model **yolov8n_256_quant_pt_uf_pose_coco-st.nb.tflite** pre-trained on the COCO dataset. To use this model, you should first download it from the stm32-hotspot GitHub: https://github.com/stm32-hotspot/ultralytics
 
@@ -86,7 +86,6 @@ These steps will be done automatically by configuring the **tools** and **deploy
 ```yaml
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -141,10 +140,10 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can depl
 ```bash
 python stm32ai_main.py
 ```
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_config.yaml](../config_file_examples/deployment_mpu_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_mpu_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_mpu_config.yaml
 ```
 
 When the application is running on the *STM32MPU* board, the LCD displays the following information:

@@ -69,7 +69,8 @@ def mlflow_ini(cfg: DictConfig = None) -> None:
     mlflow.set_tag("mlflow.runName", run_name)
     params = {"operation_mode": cfg.operation_mode}
     mlflow.log_params(params)
-    mlflow.tensorflow.autolog(log_models=False)
+#    mlflow.tensorflow.autolog(log_models=False)
+    mlflow.keras.autolog(log_models=False)
 
 
 def log_to_file(dir: str, log: str) -> None:
@@ -101,7 +102,7 @@ def log_last_epoch_history(cfg: DictConfig ,output_dir: str) -> None:
     if os.path.exists(csv_path):
         with open(csv_path, newline='') as csvfile:
             reader = csv.reader(csvfile)
-            rows = list(reader)
+            rows = [row for row in reader if row]  # skip empty rows
             metrics = rows[0]
             values = rows[-1]
         log_to_file(output_dir, f'The last epoch history :\n{metrics}\n{values}')

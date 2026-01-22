@@ -10,4 +10,4 @@ from .plot_learning_rate_schedule import plot_learning_rate_schedule
 from .lr_schedulers import get_scheduler_names, LRLinearDecay, LRExponentialDecay, LRStepDecay, LRCosineDecay, \
                                     LRWarmupCosineDecay, LRCosineDecayRestarts, LRPolynomialDecay, LRPolynomialDecayRestarts, \
                                     LRPiecewiseConstantDecay 
-from .common_training import set_frozen_layers, set_dropout_rate, get_optimizer
+from .common_training import set_frozen_layers, set_dropout_rate, get_optimizer, set_all_layers_trainable_parameter

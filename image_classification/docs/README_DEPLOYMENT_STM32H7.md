@@ -1,7 +1,6 @@
-# Image Classification STM32 Model Deployment
+# Image Classification STM32H7 Model Deployment
 
-This tutorial demonstrates how to deploy a pre-trained image classification model built with TensorFlow Lite (.tflite), Keras (.h5), or (.ONNX) on an STM32 board using STM32Cube.AI.
-
+This tutorial demonstrates how to deploy a pre-trained image classification model built with TensorFlow Lite (.tflite), Keras (.h5), or (.ONNX) on an STM32H7 board using STEdgeAI.
 
 <details open><summary><a href="#1"><b>1. Before You Start</b></a></summary><a id="1"></a>
 
@@ -19,13 +18,12 @@ The [stm32ai application code](../../application_code/image_classification/STM32
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Software Requirements</a></summary><a id="1-2"></a>
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires an internet connection and making a free account. Or, alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STEdgeAI functionalities without installing the software. This requires an internet connection and making a free account. Or, alternatively, you can install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
 
 For local installation :
 
-- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting for using [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `'.zip'` and `'.pack'` files.
-The detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
+- Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) __v1.17.0__.
+- Download and install [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html).
 
 </details></ul>
 <ul><details open><summary><a href="#1-3">1.3 Specifications</a></summary><a id="1-3"></a>
@@ -41,22 +39,22 @@ The detailed instructions on installation are available in this [wiki article](h
 </details>
 <details open><summary><a href="#2"><b>2. Configure the YAML File</b></a></summary><a id="2"></a>
 
-You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/image_classification/) or your own image classification model. Please refer to the YAML file [deployment_config.yaml](../src/config_file_examples/deployment_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/image_classification/) or your own image classification model. Please refer to the YAML file [deployment_h7_config.yaml](../config_file_examples/deployment_h7_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
-As an example, we will show how to deploy the model [mobilenet_v2_0.35_128_fft_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft) pre-trained on the Flowers dataset using the necessary parameters provided in [mobilenet_v2_0.35_128_fft_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft/mobilenet_v2_0.35_128_fft_config.yaml).
+As an example, we will show how to deploy the model [mobilenetv2_a035_128_fft_int8.tflite](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft) pre-trained on the Flowers dataset using the necessary parameters provided in [mobilenetv2_a035_128_fft_config.yaml](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft/mobilenetv2_a035_128_fft_config.yaml).
 
 <ul><details open><summary><a href="#2-1">2.1 Setting the Model and the Operation Mode</a></summary><a id="2-1"></a>
 
-The first section of the configuration file is the `general` section that provides information about your project and the path to the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
+The first section of the configuration file is the `model` section that provides information about your project and the path to the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
 
 ```yaml
-general:
-   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/flowers/mobilenet_v2_0.35_128_fft/mobilenet_v2_0.35_128_fft_int8.tflite
+model:
+   model_path: ../../stm32ai-modelzoo/image_classification/mobilenetv2/ST_pretrainedmodel_public_dataset/tf_flowers/mobilenetv2_a035_128_fft/mobilenetv2_a035_128_fft_int8.tflite
 
 operation_mode: deployment
 ```
 
-In the `general` section, users must provide the path to their model file using the `model_path` attribute. This can be either a Keras model file with a `.h5` filename extension (float model), a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
+In the `model` section, users must provide the path to their model file using the `model_path` attribute. This can be either a Keras model file with a `.keras` filename extension (float model), a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
 In this example, the path to the MobileNet V2 model is provided in the `model_path` parameter. Please check out the [STM32 model zoo information](./README_MODELS.md) for more image classification models.
 
 You must copy the `preprocessing` section to your own configuration file, to ensure you have the correct preprocessing parameters.
@@ -72,7 +70,7 @@ dataset:
   class_names: [daisy, dandelion, roses, sunflowers, tulips]
 ```
 
-The `class_names` attribute specifies the classes that the model is trained on. This information must be provided in the YAML file, as there is no dataset from which the classes can be inferred. If the `class_names` attribute is absent, the `classes_name_file` argument can be used as an alternative. The `classes_name_file` should point to a text file containing the class names.
+The `class_names` attribute specifies the classes that the model is trained on. This information must be provided in the YAML file, as there is no dataset from which the classes can be inferred. If the `class_names` attribute is absent, the `classes_file_path` argument can be used as an alternative. The `classes_file_path` should point to a text file containing the class names.
 
 </details></ul>
 <ul><details open><summary><a href="#2-2-2">2.2.2 Preprocessing info</a></summary><a id="2-2-2"></a>
@@ -97,14 +95,13 @@ preprocessing:
 </details></ul>
 <ul><details open><summary><a href="#2-3">2.3 Deployment parameters</a></summary><a id="2-3"></a>
 
-To deploy the model in **STM32H747I-DISCO** board, we will use *STM32Cube.AI* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
+To deploy the model in **STM32H747I-DISCO** board, we will use *STEdgeAI Core* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
 
 These steps will be done automatically by configuring the **tools** and **deployment** sections in the YAML file as the following:
 
 ```yaml
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -122,7 +119,6 @@ deployment:
 ```
 
 where:
-- `version` - Specify the **STM32Cube.AI** version used to benchmark the model, e.g. **10.0.0**.
 - `optimization` - *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
 - `path_to_stm32ai` - *Path* to stm32ai executable file to use local download, else **False**.
 - `path_to_cubeIDE` - *Path* to stm32cubeide executable file.
@@ -130,7 +126,7 @@ where:
 - `IDE` -**GCC**, only supported option for *stm32ai application code*.
 - `verbosity` - *0* or *1*. Mode 0 is silent, and mode 1 displays messages when building and flashing C application on STM32 target.
 - `serie` - **STM32H7**, only supported option for *stm32ai application code*.
-- `board` - **STM32H747I-DISCO** or **NUCLEO-H743ZI2**, see the [README](../../application_code/image_classification/STM32H7/README.md) for more details. 
+- `board` - **STM32H747I-DISCO** or **NUCLEO-H743ZI2**, see the [README](../../application_code/image_classification/STM32H7/README.md) for more details.
 - `input` - **CAMERA_INTERFACE_DCMI**, **CAMERA_INTERFACE_USB** or **CAMERA_INTERFACE_SPI** (only required for Nucleo board).
 - `output`- **DISPLAY_INTERFACE_USB** or **DISPLAY_INTERFACE_SPI** (only required for Nucleo board).
 
@@ -142,14 +138,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -165,18 +161,18 @@ The picture below shows how to connect the camera board to the *STM32H747I-DISCO
 If you chose to modify the [user_config.yaml](../user_config.yaml), you can deploy the model by running the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py 
+python stm32ai_main.py
 ```
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_h7_config.yaml](../config_file_examples/deployment_h7_config.yaml) and use it, then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_h7_config.yaml
 ```
 
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../src/config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC` folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC` folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```
 
 When the application is running on the *STM32H747I-DISCO* discovery board, the LCD displays the following information:

@@ -1,6 +1,6 @@
 # Evaluation of Semantic Segmentation Model
 
-Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their **TensorFlow Lite (.tflite), Keras (.h5), or ONNX (.onnx)** semantic segmentation model. However, we only support channel first ONNX models so far. By uploading their model and an evaluation set (validation or test), users can quickly and easily estimate the performance of their model and generate various metrics, in particular accuracy and average IoU.
+Our evaluation service is a comprehensive tool that enables users to assess the accuracy of their **TensorFlow Lite (.tflite), Keras (.keras), or ONNX (.onnx)** semantic segmentation model. However, we only support channel first ONNX models so far. By uploading their model and an evaluation set (validation or test), users can quickly and easily estimate the performance of their model and generate various metrics, in particular accuracy and average IoU.
 
 The evaluation service is designed to be fast, efficient, and accurate, making it an essential tool for anyone looking to evaluate the performance of their semantic segmentation model.
 
@@ -8,21 +8,22 @@ The evaluation service is designed to be fast, efficient, and accurate, making i
 
 <details open><summary><a href="#1"><b>1. Configure the YAML file</b></a></summary><a id="1"></a>
 
-To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
+To use this service and achieve your goals, you can use the [user_config.yaml](../user_config.yaml) or directly update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) file and use it. This file provides an example of how to configure the evaluation service to meet your specific needs.
 
 Alternatively, you can follow the tutorial below, which shows how to evaluate your pre-trained semantic segmentation model using our evaluation service.
 
 <ul><details open><summary><a href="#1-1">1.1 Set the model and the operation mode</a></summary><a id="1-1"></a>
 
-As mentioned previously, all the sections of the YAML file must be set in accordance with this **[evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml)**.
+As mentioned previously, all the sections of the YAML file must be set in accordance with this **[evaluation_config.yaml](../config_file_examples/evaluation_config.yaml)**.
 In particular, `operation_mode` should be set to evaluation and the `evaluation` section should be filled as in the following example: 
 
 ```yaml
-general:
+model:
+   model_type: deeplab
    model_path: <path-to-a-Keras-or-TFlite-model-or-ONNX-file> 
 operation_mode: evaluation
 ```
-The path to the deeplab_v3 model is provided in the `model_path` parameter.
+The path to the model and its type are provided in the `model` section.
 
 ```yaml
 evaluation:
@@ -37,13 +38,11 @@ Information about the dataset you want to use for evaluation is provided in the 
 
 ```yaml
 dataset:
-   name: pascal_voc   # Dataset name. Mandatory. Only 'pascal_voc' is supported for the time being
-   class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-               "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-               "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"]
-   test_path: ./datasets/VOC2012_train_val/JPEGImages                              # Path to directory containing the images of the test set.
-   test_masks_path: ./datasets/VOC2012_train_val/SegmentationClassAug             # Path to directory containing the masks of the test set
-   test_files_path: ./datasets/VOC2012_train_val/ImageSets/Segmentation/val.txt    # Path to file containing the list of images names to be considered in 'test_path' and 'test_mask_path' for test set 
+   dataset_name: person_coco_2017_pascal_voc_2012  
+   class_names: ["background", "person"]
+   test_path: ./datasets/person_COCO2017_VOC2012/JPEGImages
+   test_masks_path: ./datasets/person_COCO2017_VOC2012/SegmentationClassAug
+   test_files_path: ./datasets/person_COCO2017_VOC2012/ImageSets/Segmentation/val.txt
    check_image_files: False   # Enable/disable image file checking.
 ```
 The state machine below describes the rules to follow when handling dataset paths for the evaluation.
@@ -65,14 +64,11 @@ If you want to use a different split ratio, you need to specify the percentage t
 
 ```yaml
 dataset:
-   name: pascal_voc
-   class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-                "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-                "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"]
-   training_path: ./datasets/VOC2012_train_val/JPEGImages                                 # Path to train jpeg images
-   training_masks_path: ./datasets/VOC2012_train_val/SegmentationClassAug                 # Path to train masks files
-   training_files_path: ./datasets/VOC2012_train_val/ImageSets/Segmentation/trainaug.txt  # Path to file listing the images names for training
-   validation_path:
+   dataset_name: person_coco_2017_pascal_voc_2012
+   class_names: ["background","person"]
+   training_path: ./datasets/person_COCO2017_VOC2012/JPEGImages
+   training_masks_path: ./datasets/person_COCO2017_VOC2012/SegmentationClassAug
+   training_files_path: ./datasets/person_COCO2017_VOC2012/ImageSets/Segmentation/trainaug.txt  
    validation_split: 0.20
    test_path:
 ```
@@ -88,7 +84,7 @@ preprocessing:
    resizing: 
      aspect_ratio: "fit"
      interpolation: bilinear
-  color_mode: rgb
+   color_mode: rgb
 ```
 
 In this example, the pixels of the input images read in the dataset are in the interval [0, 255], that is UINT8. If you set `scale` to 1./255 and `offset` to 0, they will be rescaled to the interval [0.0, 1.0]. 
@@ -109,14 +105,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -128,15 +124,15 @@ If you chose to modify the [user_config.yaml](../user_config.yaml) you can evalu
 ```bash
 python stm32ai_main.py 
 ```
-If you chose to update the [evaluation_config.yaml](../src/config_file_examples/evaluation_config.yaml) and use it then run the following command from the UC folder: 
+If you chose to update the [evaluation_config.yaml](../config_file_examples/evaluation_config.yaml) and use it then run the following command from the UC folder: 
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name evaluation_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name evaluation_config.yaml
 ```
-In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../src/config_file_examples/chain_eqeb_config.yaml)** example with the command below:
+In case you want to evaluate the accuracy of the quantized model then benchmark it, you can either launch the evaluation operation mode followed by the [benchmark service](./README_BENCHMARKING.md) that describes in detail how to proceed or you can use chained services like launching **[chain_eqeb](../config_file_examples/chain_eqeb_config.yaml)** example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqeb_config.yaml
 ```
 
 </details>
@@ -151,6 +147,6 @@ IoU (Intersection over Union) is a popular metric for segmentation that estimate
 it is the ratio between prediction and ground truth intersection (in pixels) over prediction and ground truth union (in pixels).
 The IoU we report is already averaged on all classes and all images of the evaluation set.
 
-Both accuracy and IoU will be displayed on your screen and then saved in the log file **stm32ai_main.log** under **experiments_outputs/\<date-and-time\>**.
+Both accuracy and IoU will be displayed on your screen and then saved in the log file **stm32ai_main.log** under **tf/src/experiments_outputs/<date-and-time>**.
 
 </details>

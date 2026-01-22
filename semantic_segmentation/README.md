@@ -1,24 +1,35 @@
-# Semantic segmentation STM32 model zoo
+# Semantic Segmentation STM32 Model Zoo
 
+## Directory Structure & Main Components
 
-## Directory components:
-* [datasets](./docs/README_DATASETS.md) placeholder for the semantic segmentation datasets.
-* [docs](./docs/) contains all readmes and documentation specific to the semantic segmentation use case.
-* [src](./docs/README_OVERVIEW.md) contains tools to train, evaluate, benchmark, quantize and deploy your model on your STM32 target.
+- **datasets/** — Contains supported datasets and step-by-step tutorials for creating, preparing, and customizing datasets for semantic segmentation:
+    - `pascal_voc_2012/`, `coco_2017_pascal_voc_2012/`, `n_class_coco_2017_pascal_voc_2012/`
+    - Guidance and scripts for dataset preparation
+    - Tutorials for dataset creation and augmentation
+- **tf** — Main Python package for all services (training, quantization, evaluation, prediction, benchmarking, deployment, etc.)
+- **config_file_examples** — Ready-to-use YAML config files for all services and chains (training, quantization, evaluation, prediction, benchmarking, deployment).
+- **outputs** — Stores experiment results, logs, and model artifacts (organized by date).
+- **docs** — All documentation and tutorials:
+    - Service-specific READMEs (training, quantization, evaluation, prediction, benchmarking, deployment, augmentation, datasets, models, overview, etc.)
+    - Tutorials in `docs/tuto/`
+    - Images in `docs/img/`
+- **stm32ai_main.py** — Main entry point for running services and chains.
+- **user_config.yaml** — User-editable config file for custom runs.
 
-## Quick & easy examples:
-The `operation_mode` top-level attribute specifies the operations or the service you want to execute. This may be single operation or a set of chained operations.
+---
 
-You can refer to readme links below that provide typical examples of operation modes, and tutorials on specific services:
+## Quick Start & Examples
 
-   - [training, chain_tqe (train + quantize + evaluate + benchmark), chain_tqeb](./docs/README_TRAINING.md)
-   - [quantization, chain_eqe, chain_qb](./docs/README_QUANTIZATION.md)
-   - [evaluation, chain_eqeb](./docs/README_EVALUATION.md)
-   - [benchmarking](./docs/README_BENCHMARKING.md)
-   - [prediction](./docs/README_PREDICTION.md)
-   - deployment, chain_qd ([STM32N6](./docs/README_DEPLOYMENT_STM32N6.md), [STM32MPU](./docs/README_DEPLOYMENT_MPU.md))
+To get started, set the `operation_mode` in your config YAML to select a service or chain. See the following documentation for details and examples:
 
-All .yaml configuration examples are located in [config_file_examples](./src/config_file_examples/) folder.
+- [Training, chain_tqe, chain_tqeb](./docs/README_TRAINING.md)
+- [Quantization, chain_eqe, chain_qb](./docs/README_QUANTIZATION.md)
+- [Evaluation, chain_eqeb](./docs/README_EVALUATION.md)
+- [Benchmarking](./docs/README_BENCHMARKING.md)
+- [Prediction](./docs/README_PREDICTION.md)
+- [Deployment: STM32N6](./docs/README_DEPLOYMENT_STM32N6.md), [STM32MPU](./docs/README_DEPLOYMENT_MPU.md)
+
+All configuration examples are in [config_file_examples/](./config_file_examples/).
 
 The different values of the `operation_mode` attribute and the corresponding operations are described in the table below. In the names of the chain modes, 't' stands for training, 'e' for evaluation, 'q' for quantization, 'b' for benchmark and 'd' for deployment on an STM32 board.
 
@@ -37,18 +48,18 @@ The different values of the `operation_mode` attribute and the corresponding ope
 | `chain_eqeb`   | Sequentially: evaluation of a float model,  quantization, evaluation of quantized model, benchmarking of quantized model                             |
 | `chain_qd`     | Sequentially: quantization of a float model, deployment of quantized model                                                                           |
 
-The `model_type` attributes currently supported for the semantic segmentation are:
-- `deeplab_v3` : specified in "Rethinking Atrous Convolution for Semantic Image Segmentation" paper by Google.
-It is composed of a backbone (encoder) that can be a Mobilenet V2 (width parameter alpha) or a ResNet-50 or 101 for example followed by an ASPP (Atrous Spatial Pyramid Pooling).
+
 
 
 ## You don't know where to start? You feel lost?
 Don't forget to follow our tuto below for a quick ramp up : 
-* [How to define and train my own model?](./docs/tuto/how_to_define_and_train_my_own_model.md)
-* [How can I fine tune a pretrained model on my own dataset?](./docs/tuto/how_to_finetune_a_model_zoo_model_on_my_own_dataset.md)
-* [How can I check the accuracy after quantization of my model?](./docs/tuto/how_to_compare_the_accuracy_after_quantization_of_my_model.md)
-* [How can I quickly check the performance of my model using the dev cloud?](./docs/tuto/how_to_quickly_benchmark_the_performances_of_a_model.md)
-* [How can I evaluate my model on STM32N6 target?](./docs/tuto/how_to_evaluate_my_model_on_stm32n6_target.md)
+- [How to define and train my own model?](./docs/tuto/how_to_define_and_train_my_own_model.md)
+- [How to fine-tune a pretrained model on my own dataset?](./docs/tuto/how_to_finetune_a_model_zoo_model_on_my_own_dataset.md)
+- [How to check accuracy after quantization?](./docs/tuto/how_to_compare_the_accuracy_after_quantization_of_my_model.md)
+- [How to quickly benchmark model performance?](./docs/tuto/how_to_quickly_benchmark_the_performances_of_a_model.md)
+- [How to evaluate my model on STM32N6 target?](./docs/tuto/how_to_evaluate_my_model_on_stm32n6_target.md)
 
-Remember that minimalistic yaml files are available [here](./src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Minimalistic YAML templates are available in [config_file_examples/](./config_file_examples/). All pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration YAML files.
+
+For more details, see the [README_OVERVIEW.md](./docs/README_OVERVIEW.md).
 

@@ -4,7 +4,7 @@ With ST Model Zoo, you can easily define and train your own TensorFlow neural ne
 
 ## Define my model
 
-First, create your own model in /src/models/custom_model.py for it to be automatically used with the model zoo training script.
+First, create your own model in [custom_model.py](../../tf/src/models/custom_model.py) for it to be automatically used with the model zoo training script.
 Open the python file and copy your model topology inside, here is the default example model:
 
 ```python
@@ -12,8 +12,10 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv2D, DepthwiseConv2D, UpSampling2D, Activation, Add, BatchNormalization, ReLU, MaxPooling2D
 from tensorflow.keras.regularizers import L2
+from typing import Any
 
-def custom(input_shape, nb_keypoints):
+
+def get_custom_model(input_shape: tuple, nb_keypoints: int, **kwargs) -> Any:
 
     inputs = Input(shape=input_shape)
 
@@ -40,9 +42,13 @@ def custom(input_shape, nb_keypoints):
     return model
 ```
 
-The model must be created inside the function get_custom_model. The input size and number of classes are then define in the user_config.yaml. See below.
+The model must be created inside the function `get_custom_model`. The input size and number of classes are then define in the `user_config.yaml`. See below.
 
-The nb_keypoints of the pose is difined in the yaml, see below in the example. Be careful about the last convolution layer that uses this parameter.
+The `nb_keypoints` of the pose is defined in the yaml, see below in the example. Be careful about the last convolution layer that uses this parameter.
+
+Also be very careful with the `stride` of your model (for example in this model if __input=[192,192,3]__, then __output=[48,48,17]__ so __stride = 192/48 = `4`__).
+
+If your model has a different stride, replace `4` by your stride number in variable [self.network_stride = 4](../../tf/src/training/pe_trainer.py#L219).
 
 
 ## Training my model
@@ -58,14 +64,14 @@ You can use any dataset of the YOLO Darknet format. You can take a look at this 
 ### Operation modes:
 
 Depending on what you want to do, you can use the operation modes below:
-- Training:
-    - To simply train the model and get as output the trained tensorflow model (.h5).
-- Chain_tqe:
-    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.h5 and .tflite)
-- Chain_tqeb:
+- `training`:
+    - To simply train the model and get as output the trained tensorflow model (.keras).
+- `chain_tqe`:
+    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.keras and .tflite)
+- `chain_tqeb`:
     - To train, quantize, evaluate and benchmark the quantized model in one go.
 
-For any details regarding the parameters of the config file, you can look here:
+For any details regarding the parameters of the config file, you can look here :
 
 - [Training documentation](../README_TRAINING.md)
 - [Quantization documentation](../README_QUANTIZATION.md)
@@ -89,17 +95,21 @@ general:
   project_name: COCO_2017_pose_Demo
   logs_dir: logs
   saved_models_dir: saved_models
-  model_path:
-  model_type: heatmaps_spe
   num_threads_tflite: 8
   gpu_memory_limit: 8
   global_seed: 123
 
 operation_mode: training
 
+model:
+  model_type: heatmaps_spe
+  model_name: custom
+  input_shape: (192, 192, 3)
+
 dataset:
-  name: COCO2017_pose
+  dataset_name: coco
   keypoints: 17
+  class_names: [person]
   training_path: ./datasets/coco_train_single_pose
   # validation_path: ./datasets/coco_val_single_pose
   validation_split: 0.1
@@ -115,24 +125,21 @@ preprocessing:
   color_mode: rgb
 
 data_augmentation:
+  random_rotation:
+    factor: (-0.2,0.2) # -+0.1 = -+36 degree angle
+    fill_mode: constant # constant, wrap
+    fill_value: -1.
   random_periodic_resizing:
     image_sizes: [[192,192],[224,224],[256,256]]
+    period: 10
   random_contrast:
     factor: 0.4
   random_brightness:
     factor: 0.3
   random_flip:
     mode: horizontal
-  random_rotation:
-    factor: (-0.1,0.1) # -+0.1 = -+36 degree angle
 
 training:
-  model:
-    name: custom
-    input_shape: (192, 192, 3)
-    # any other parameters in the function custom() from custom_model.py
-    pretrained_weights: imagenet
-  frozen_layers: # (0:154)
   batch_size: 64
   epochs: 1000
   optimizer:
@@ -142,9 +149,9 @@ training:
     ReduceLROnPlateau:
       monitor: val_oks
       mode: max
-      factor: 0.25
+      factor: 0.5
       min_delta: 0.0001
-      patience: 5
+      patience: 30
     ModelCheckpoint:
       monitor: val_oks
       mode: max
@@ -152,18 +159,18 @@ training:
       monitor: val_oks
       mode: max
       min_delta: 0.0001
-      patience: 10
+      patience: 45
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 
-You can also find example of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find example of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 ## Run the script:
 

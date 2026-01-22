@@ -58,7 +58,7 @@ Please refer to [https://github.com/ultralytics/ultralytics](https://github.com/
 > Do not use the older repository: [https://github.com/ultralytics/yolov5](https://github.com/ultralytics/yolov5).
 > To export the yolov5nu: yolo export model=yolov5nu.pt format=tflite imgsz=256  int8=True
 
-> To deploy in the STM32 model zoo, use the `yolo_v5u` model_type.
+> To deploy in the STM32 model zoo, use the `yolov5u` model_type.
 
 
 ## Model export and quantization
@@ -147,7 +147,6 @@ model:
     model_path: ./yolov8n_saved_model
     input_shape: [256, 256, 3]
 quantization:
-    fake: False
     quantization_type: per_channel
     quantization_input_type: uint8
     quantization_output_type: float
@@ -184,7 +183,6 @@ model:
     model_path: ./yolov8n_saved_model
     input_shape: [256, 256, 3]
 quantization:
-    fake: False
     quantization_type: per_channel
     quantization_input_type: uint8
     quantization_output_type: int8
@@ -212,7 +210,6 @@ model:
     model_path: ./yolov8n_saved_model
     input_shape: [256, 256, 3]
 quantization:
-    fake: False
     quantization_type: per_channel
     quantization_input_type: float
     quantization_output_type: float
@@ -266,5 +263,5 @@ Both float and int8 output are supported by the post-processing.
 > According the model used is the yolov5nu for a given resolution, use the same parameters as for yolov8 for the post-processing as they are identical.
 > In the application code, the code enabled by selecting POSTPROCESS_OD_YOLO_V5_UU is deprecated. it corresponds to the older version of yolov5n and not to the yolov5nu.
 > It would require a model with uint8 input and uint8 output.
-> Using the `yolo_v5u` model_type will enable the POSTPROCESS_OD_YOLO_V8_UF or POSTPROCESS_OD_YOLO_V8_UI depending on the input/output format.
+> Using the `yolov5u` model_type will enable the POSTPROCESS_OD_YOLO_V8_UF or POSTPROCESS_OD_YOLO_V8_UI depending on the input/output format.
  

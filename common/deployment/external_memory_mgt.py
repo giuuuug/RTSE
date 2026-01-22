@@ -15,15 +15,16 @@ from typing import Dict
 from common.utils import get_model_name_and_its_input_shape
 
 
-def update_activation_c_code(c_project_path: str, path_network_c_info: str, available_AXIRAM: int, cfg = None, custom_objects: Dict = None):
+def update_activation_c_code(c_project_path: str, model_path: str=None, path_network_c_info: str=None, available_AXIRAM: int=0, aspect_ratio = None, custom_objects: Dict = None):
 
     path_main_h=os.path.join(c_project_path, "Application/STM32H747I-DISCO/Inc/CM7/main.h")
     path_main_c=os.path.join(c_project_path, "Application/STM32H747I-DISCO/Src/CM7/main.c")
     path_ai_interface_h=os.path.join(c_project_path, "Application/STM32H747I-DISCO/Inc/CM7/ai_interface.h")
 
     ### Get NN preprocessing buffers size
-    aspect_ratio = cfg.preprocessing.resizing.aspect_ratio
-    _, input_shape = get_model_name_and_its_input_shape(model_path=cfg.general.model_path, custom_objects=custom_objects)
+    aspect_ratio = aspect_ratio
+
+    _, input_shape = get_model_name_and_its_input_shape(model_path=model_path, custom_objects=custom_objects)
     network_height = input_shape[0]
     network_width = input_shape[1]
     network_channel = input_shape[2]
@@ -141,7 +142,7 @@ def update_activation_c_code(c_project_path: str, path_network_c_info: str, avai
                     pool_list_str.append(name_pool)
                     if name_pool == "NN_Activation_Buffer_AXIRAM":
                         available_AXIRAM = available_AXIRAM - pool['used_size_bytes']
-                line +=  "ai_handle NN_Activation_Buffer[AI_ACTIVATION_BUFFERS_COUNT] = { "
+                line +=  "uint8_t* NN_Activation_Buffer[AI_ACTIVATION_BUFFERS_COUNT] = { "
                 for pool in pool_list_str:
                     line += pool + ", "
                 line += "};\n\n"

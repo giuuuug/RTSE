@@ -1,6 +1,6 @@
 # How can I compare the accuracy after quantization?
 
-The quantization process optimizes the model for efficient deployment on embedded devices by reducing its memory usage (Flash/RAM) and accelerating its inference time, with minimal degradation in model accuracy. With ST Model Zoo, you can easily check the accuracy of your model, quantize your model and compare this accuracy after quantization. You can also simply do one of these actions alone.
+The quantization process optimizes the model for efficient deployment on embedded devices by reducing its memory usage (Flash/RAM) and accelerating its inference time, with minimal degradation in model accuracy. This is done by representing weights and activation with lower bit precision, in our case going from 32-bit floating point to 8 bit integer. With ST Model Zoo, you can easily check the accuracy of your model, quantize your model and compare this accuracy after quantization. You can also simply do one of these actions alone.
 
 ## Operation modes:
 
@@ -17,13 +17,13 @@ For any details regarding the parameters of the config file, you can look at the
 
 The way the ST Model Zoo works is that you edit the user_config.yaml available for each use case and run the stm32ai_main.py python script.
 
-Here is an example where we evaluate an .h5 model before quantizing it and evaluate it again for comparison.
+Here is an example where we evaluate an .h5 or a .keras model before quantizing it and evaluate it again for comparison.
 
 The most important parts here are to define:
-- The path to the model not quantized
+- The path to the float model
 - The operation mode to chain_eqe
 - The data paths in [ESC format](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/blob/main/audio_event_detection/src/README.md#2)
-- The classes
+- The class names
 - The preprocessing and feature extraction options (same as training)
 - The quantization options
 
@@ -31,12 +31,8 @@ It is highly recommended to use real data for the final quantization.
 
 
 ```yaml
-# user_config.yaml
-
 general:
   project_name: aed_project
-  # Change to the path of the model you wish to quantize and evaluate
-  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_256_64x96_tl/yamnet_256_64x96_tl.h5
   logs_dir: logs
   saved_models_dir: saved_models
   global_seed: 120
@@ -45,8 +41,13 @@ general:
   batch_size: 16 # This is used to batch the eval dataset
 
 operation_mode: chain_eqe 
+
+model:
+  # Change to the path of the model you wish to quantize and evaluate
+  model_path: ../../stm32ai-modelzoo/audio_event_detection/yamnet/ST_pretrainedmodel_public_dataset/esc10/yamnet_e256_64x96_tl/yamnet_e256_64x96_tl.keras
+
 dataset:
-  name: esc10
+  dataset_name: esc10
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves']
   file_extension: '.wav'
 
@@ -96,7 +97,6 @@ feature_extraction:
   norm: None
   htk : True
   to_db : False
-  include_last_patch: False
 
 quantization:
   quantizer: TFlite_converter
@@ -106,14 +106,14 @@ quantization:
   export_dir: quantized_models
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
-You can look at user_config.yaml examples [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples) for other operation modes.
+You can look at user_config.yaml examples [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples) for other operation modes.
 
 ## Run the script:
 
@@ -129,4 +129,4 @@ python stm32ai_main.py --config-path=path_to_the_folder_of_the_yaml --config-nam
 
 ## Clip-level and patch-level accuracies
 
-When evaluating an audio event detection model, you will get clip-level and patch-level confusion matrixes. A clip contains multiple patches, so you get both the performances of your model on every patches or on full clips. You could have a low patch-level accuracy while having a very good clip-level accuracy. Both of these metrics help you to evaluate your model.
+When evaluating an audio event detection model, you will get clip-level and patch-level confusion matrixes. A clip contains multiple patches, so you get both the performances of your model on every patch or on full clips. You could have a low patch-level accuracy while having a very good clip-level accuracy. Both of these metrics help you to evaluate your model.

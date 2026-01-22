@@ -12,6 +12,18 @@ from common.data_augmentation import check_dataaug_argument, remap_pixel_values_
 
 
 def _check_rectangle_erasing_args(fill_method, nrec, area, wh_ratio):
+    """
+    Function checking if erasing parameters are valid. Potentially raises an error
+    
+    Args:
+        fill_method (str): possible choices "uniform", "random", "mosaic"
+        nrec: number of erased rectangles
+        area: area of erased rectangles
+        wh_ratio: erased rectangles form factor
+    Returns:
+        nrec, area, wh_ratio: tuple of min/max number of rectangles, area and width/height ratio
+
+    """
 
     if fill_method not in {"uniform", "random", "mosaic"}:
         raise ValueError("\nArgument `fill_method` of function `random_rectangle_erasing`: expecting "
@@ -48,6 +60,13 @@ def _parse_color_arg(color, fill_method=None, function_name=None):
     on the fill method.
     It returns an RGB color specification as a tensor with shape (3, 2).
     Each element is an integer in the interval [0, 255].
+
+        Args:
+            color (tuple): tuple of 3 integers in the interval [0, 255]
+            fill_method (str): possible choices "uniform", "random", "mosaic"
+            function_name (str): augmentation function name 
+        Returns:
+            (tf.Tensor) with RGB color specification
     """
     if fill_method == "uniform":
         if color:
@@ -80,6 +99,10 @@ def _look_for_grayscale_rgb_images(images):
     RGB images. Their R, G and B planes are identical. We have to insert
     grayscale rectangles in these images instead of color rectangles, 
     so we need to know where they are. 
+        Args:
+            images (tf.Tensor): batch of input images
+        Returns:
+            (tf.Tensor) grayscale images indexes
     """
     
     images_shape = tf.shape(images)
@@ -115,6 +138,19 @@ def _generate_rectangle_mask(batch_size, image_size=None, num_planes=None,
     Each element of the mask is a pixel of a plane. If the mask is set to 1,
     a rectangle is present at this location. If it is set to 0, no rectangle
     is present.
+
+        Args:
+            batch_size (int): number of images in a batch
+            image_size (tuple): images dimensions (width, height)
+            num_planes (int): number of images channels
+            nrec_range (tuple): min/max number of erased rectangles
+            area_range (tuple): min/max areas of erased rectangles
+            wh_ratio_range (tuple): min/max width/height of erased rectangles
+
+        Returns: 
+            (tf.Tensor): mask of erased rectangles
+
+
     """
     width, height = image_size
  
@@ -188,6 +224,10 @@ def _remove_rectangle_overlaps(rectangle_mask):
     the rectangle with the largest number wins and remains intact. The 
     other rectangles get carved and become more complex shapes such as
     L-shapes, disconnected smaller rectangles, etc.
+        Args: 
+            rectangle_mask (tf.Tensor): mask of erased rectangles
+        Returns:
+            (tf.Tensor): filtered mask without overlaps
     """
     
     mask_shape = tf.shape(rectangle_mask)
@@ -227,6 +267,17 @@ def _generate_color_planes(batch_size, image_size=None, num_planes=None, fill_me
           specified by the `color` argument (a tuple of 3 integers in 
           the [0, 255] interval).
         - "mosaic", the planes are filled with random RGB pixels.
+
+        Args:
+            batch_size (int): number of images in a batch
+            image_size (tuple): images dimensions (width, height)
+            num_planes (int): number of planes
+            fill_method (str): possible choices "uniform", "random", "mosaic"
+            color (tuple): color ranges for each image channels  
+        
+        Returns:
+            (tf.Tensor): planes with uniform RGB colors
+
     """
     width, height = image_size
 
@@ -288,7 +339,7 @@ def random_rectangle_erasing(
     By default, if no arguments are specified, one random black rectangle 
     is erased from each image. All the rectangles are different (image mode).
 
-    Arguments:
+    Args:
         images:
             Input RGB or grayscale images with shape
             [batch_size, width, height, channels].

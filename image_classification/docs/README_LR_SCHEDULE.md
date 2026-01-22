@@ -17,6 +17,6 @@ Just copy the examples and paste them to a configuration file. Then you can laun
 python plot_lr_schedule.py --config-path ../../ --config-name user_config.yaml --fname plot.png
 ```
 
-This will plot the learning rate schedule used in /src/user_config.yaml and save the plotted curve in /src/training/lr_schedule/plot.png file
+This will plot the learning rate schedule used in /tf/src/user_config.yaml and save the plotted curve in /tf/src/training/lr_schedule/plot.png file
 
 Note that the script cannot be used with the Tensorflow *ReduceLROnPlateau* scheduler as the learning rate schedule is only available after training.

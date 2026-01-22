@@ -9,11 +9,11 @@ A choice of model architectures pretrained on multiple dataset can be found [her
 ## Operation modes:
 
 Depending on what you want to do, you can use the operation modes below:
-- Training:
-    - To simply train the model on my data and get as output the trained tensorflow model (.h5).
-- Chain_tqe:
-    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.h5 and .tflite)
-- Chain_tqeb:
+- training:
+    - To simply train the model on my data and get as output the trained tensorflow model (.keras).
+- chain_tqe:
+    - To train, quantize and evaluate the model in one go. You get as ouput both the train and quantized trained models (.keras and .tflite)
+- chain_tqeb:
     - To train, quantize, evaluate and benchmark the quantized model in one go.
 
 For any details regarding the parameters of the config file, you can look here:
@@ -41,29 +41,36 @@ The most important parts here are to define:
 - Choose a model, its pretrained weights and input size
 - The other training parameters
 
+> [!NOTE]
+> If your number of `keypoints` is different from `17`, the code will give equal an weight to each keypoint in the [OKS metric](../../tf/src/evaluation/metrics.py#L153).
+
+> [!IMPORTANT]  
+> If you want to have the connections between the keypoints for your dataset check out the [dictionnary](../../tf/src/utils/connections.py) to add your own connections as well as their colors.
+
 ```yaml
 # user_config.yaml
 
 general:
-  project_name: COCO_2017_pose_Demo
+  project_name: Custom_dataset_training
   logs_dir: logs
   saved_models_dir: saved_models
-  model_path:
-  model_type: heatmaps_spe
   num_threads_tflite: 8
   gpu_memory_limit: 8
   global_seed: 123
 
 operation_mode: training
 
+model:
+   model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192_int8.tflite
+   model_type: heatmaps_spe
+
 dataset:
-  name: COCO2017_pose
-  keypoints: 17
+  dataset_name: coco
+  keypoints: 17 # Put here your dataset number of keypoints
+  class_names: [person]
   training_path: ./datasets/coco_train_single_pose
-  # validation_path: ./datasets/coco_val_single_pose
   validation_split: 0.1
   test_path: ./datasets/coco_val_single_pose
-  # quantization_path: ../datasets/coco_train_single_pose
   quantization_split: 0.3
 
 preprocessing:
@@ -73,39 +80,34 @@ preprocessing:
     interpolation: nearest
   color_mode: rgb
 
-# Optional
 data_augmentation:
+  random_rotation:
+    factor: (-0.2,0.2) # -+0.1 = -+36 degree angle
+    fill_mode: constant # constant, wrap
+    fill_value: -1.
   random_periodic_resizing:
     image_sizes: [[192,192],[224,224],[256,256]]
+    period: 10
   random_contrast:
     factor: 0.4
   random_brightness:
     factor: 0.3
   random_flip:
     mode: horizontal
-  random_rotation:
-    factor: (-0.1,0.1) # -+0.1 = -+36 degree angle
 
 training:
-  model:
-    name: st_movenet_lightning_heatmaps
-    alpha: 1.0
-    input_shape: (192, 192, 3)
-    pretrained_weights: imagenet
-  resume_training_from: # experiments_outputs/2024_11_06_16_44_31/
-  frozen_layers: # (0:154)
   batch_size: 64
   epochs: 1000
   optimizer:
     Adam:
-      learning_rate: 0.01
+      learning_rate: 5.0e-4
   callbacks:
     ReduceLROnPlateau:
       monitor: val_oks
       mode: max
-      factor: 0.25
+      factor: 0.5
       min_delta: 0.0001
-      patience: 5
+      patience: 30
     ModelCheckpoint:
       monitor: val_oks
       mode: max
@@ -113,17 +115,17 @@ training:
       monitor: val_oks
       mode: max
       min_delta: 0.0001
-      patience: 10
+      patience: 45
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
-You can also find examples of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 ## Run the script:
 

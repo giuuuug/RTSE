@@ -1,6 +1,6 @@
 # Hand Posture STM32 Model Deployment
 
-This tutorial demonstrates how to deploy a pre-trained Hand Posture model built with Keras (.h5) on an STM32 board using STM32Cube.AI.
+This tutorial demonstrates how to deploy a pre-trained Hand Posture model built with Keras (`.keras`, or `.h5`) on an STM32 board using STEdge AI.
 
 
 <details open><summary><a href="#1"><b>1. Before You Start</b></a></summary><a id="1"></a>
@@ -14,12 +14,12 @@ The [stm32ai application code](../../application_code/hand_posture/STM32F4/READM
 </details></ul>
 <ul><details open><summary><a href="#1-2">1.2 Software Requirements</a></summary><a id="1-2"></a>
 
-You can use the [STM32 developer cloud](https://stedgeai-dc.st.com/home) to access the STM32Cube.AI functionalities without installing the software. This requires an internet connection and creating a free account. Alternatively, you can install [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
+You can use the [STEdge AI Developer Cloud](https://stedgeai-dc.st.com/home) to access the STEdge AI functionalities without installing the software. This requires an internet connection and creating a free account. Alternatively, you can install [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally. In addition to this, you will also need to install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) for building the embedded project.
 
 For local installation :
 
 - Download and install [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html).
-- If opting to use [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) locally, download it then extract both `.zip` and `.pack` files.
+- If opting to use [STEdge AI Core](https://www.st.com/en/development-tools/stedgeai-core.html) locally, download it and install after unzipping.
 
 Detailed instructions on installation are available in this [wiki article](https://wiki.st.com/stm32mcu/index.php?title=AI:How_to_install_STM32_model_zoo).
 
@@ -33,23 +33,26 @@ Detailed instructions on installation are available in this [wiki article](https
 </details>
 <details open><summary><a href="#2"><b>2. Configure the YAML File</b></a></summary><a id="2"></a>
 
-You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo on GH](./README_MODELS.md) or your own Hand Posture model. Please refer to the YAML file [deployment_config.yaml](../src/config_file_examples/deployment_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo on GitHub](./README_MODELS.md) or your own Hand Posture model. Please refer to the YAML file [deployment_config.yaml](../config_file_examples/deployment_config.yaml), which is a ready to use YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
-As an example, we will show how to deploy the model [CNN2D_ST_HandPosture_8classes.h5](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/hand_posture/CNN2D_ST_HandPosture/ST_pretrainedmodel_custom_dataset/ST_VL53L8CX_handposture_dataset/CNN2D_ST_HandPosture_8classes/) pre-trained on the [ST_VL53L8CX_handposture_dataset](./README_DATASETS.md) dataset .
+As an example, we will show how to deploy the model [st_cnn2d_handposture_8classes.keras](https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/master/hand_posture/st_cnn2d_handposture/ST_pretrainedmodel_custom_dataset/ST_VL53L8CX_handposture_dataset/st_cnn2d_handposture_8classes/) pre-trained on the [ST_VL53L8CX_handposture_dataset](../datasets/ST_VL53L8CX_handposture_dataset.zip) dataset.
 
-<ul><details open><summary><a href="#2-1">2.1 Setting the Model and the Operation Mode</a></summary><a id="2-1"></a>
+<ul><details open><summary><a href="#2-1">2.1 Setting the operation_mode and the model</a></summary><a id="2-1"></a>
 
-The first section of the configuration file is the `general` section that provides information about your project and the path to the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
+The first section of the configuration file is the `general` section that provides information about your project. The `operation_mode` attribute should be set to `deployment` as follows:
 
 ```yaml
 general:
-   model_path: ../../stm32ai-modelzoo/hand_posture/CNN2D_ST_HandPosture/ST_pretrainedmodel_custom_dataset/ST_VL53L8CX_handposture_dataset/CNN2D_ST_HandPosture_8classes/CNN2D_ST_HandPosture_8classes.h5
-    # Path to the model file to deploy
+  project_name: handposture
 
 operation_mode: deployment
+
+model:
+   model_path: ../../stm32ai-modelzoo/hand_posture/st_cnn2d_handposture/ST_pretrainedmodel_custom_dataset/ST_VL53L8CX_handposture_dataset/st_cnn2d_handposture_8classes/st_cnn2d_handposture_8classes.keras
+    # Path to the model file to deploy
 ```
 
-In the `general` section, users must provide the path to their model file using the `model_path` attribute. It has to be a Keras model file with a `.h5` filename extension (float model).
+In the `model` section, users must provide the path to their model file using the `model_path` attribute. It has to be a float32 model file with a (`.keras` or `.h5`) filename extension (float model).
 
 You must copy the `preprocessing` section to your own configuration file to ensure you have the correct preprocessing parameters.
 
@@ -67,14 +70,13 @@ The `class_names` attribute specifies the classes that the model is trained on. 
 </details></ul>
 <ul><details open><summary><a href="#2-3">2.3 Deployment parameters</a></summary><a id="2-3"></a>
 
-To deploy the model on the **NUCLEO-F401RE** board, we will use *STM32Cube.AI* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
+To deploy the model on the **NUCLEO-F401RE** board, we will use *STEdge AI* to convert the model into optimized C code and *STM32CubeIDE* to build the C application and flash the board.
 
 These steps will be done automatically by configuring the **tools** and **deployment** sections in the YAML file as follows:
 
 ```yaml
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -90,9 +92,9 @@ deployment:
 ```
 
 where:
-- `version` - Specify the **STM32Cube.AI** version used to benchmark the model, e.g., **10.0.0**.
 - `optimization` - *String*, define the optimization used to generate the C model, options: "*balanced*", "*time*", "*ram*".
 - `path_to_stedgeai` - *Path* to stedgeai executable file to use local download, else **False**.
+- `on_cloud` - *Boolean*, if **True** the deployment is done on the STEdge AI Developer Cloud, else if **False** the deployment is done locally.
 - `path_to_cubeIDE` - *Path* to stm32cubeide executable file.
 - `c_project_path` - *Path* to [stm32ai application code](../../application_code/hand_posture/STM32F4/README.md) project.
 - `IDE` - **GCC**, only supported option for *stm32ai application code*.
@@ -107,10 +109,10 @@ The model zoo uses MLFlow to record logs when running. You'll want to configure 
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
-You'll then be able to access the logs by going to `src/experiments_outputs` in your favorite shell, using the command `mlflow ui`, and accessing the provided IP address in your browser.
+You'll then be able to access the logs by going to `./tf/src/experiments_outputs` in your favorite shell, using the command `mlflow ui`, and accessing the provided IP address in your browser.
 
 </details></ul>
 </details>
@@ -128,10 +130,10 @@ If you chose to modify the [user_config.yaml](../user_config.yaml), you can depl
 python stm32ai_main.py 
 ```
 
-If you chose to update the [deployment_config.yaml](../src/config_file_examples/deployment_config.yaml) and use it, then run the following command from the UC  folder to build and flash the application on your board:
+If you chose to update the [deployment_config.yaml](../config_file_examples/deployment_config.yaml) and use it, then run the following command from the UC  folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_config.yaml
 ```
 
 </details>

@@ -4,7 +4,7 @@ With ST Model Zoo, you can easily define and train your own TensorFlow neural ne
 
 ## Define my model
 
-First, create your own model in /src/models/custom_model.py for it to be automatically used with the model zoo training script.
+First, create your own model in ./tf/src/models/custom_model.py for it to be automatically used with the model zoo training script.
 Open the python file and copy your model topology inside, here is the default example model:
 
 ```python
@@ -127,9 +127,12 @@ general:
   display_figures: False
 
 operation_mode: training
-
+model: 
+  #model_path: 
+  model_name: custom
+  input_shape: [224,224,3]
 dataset:
-  name: pascal_voc
+  dataset_name: person_coco_2017_pascal_voc_2012
   # class to detect/segment
   class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
                 "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
@@ -167,13 +170,6 @@ data_augmentation:
     change_rate: 1.0
 
 training:
-  model:
-    name: custom # put custom for the script to understand that you want to use your own model
-    input_shape: (128, 128, 3) # your input size
-    # Any other argument you added to the get_custom_model() function
-
-  # all the parameters below are standard in machine learning, you can look for them in google
-  # they mostly depends on the topology of your model and will need a lot of testing
   dropout: 0.6
   batch_size: 16
   epochs: 1
@@ -195,15 +191,15 @@ training:
 
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 
-You can also find example of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find example of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 ## Run the script:
 

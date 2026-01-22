@@ -2,8 +2,6 @@
 
 This tutorial demonstrates how to deploy a pre-trained semantic segmentation model built with TensorFlow Lite (.tflite) or (.ONNX) on an STM32MPU board using X-LINUX-AI.
 
-## <a id="">Table of contents</a>
-
 <details open><summary><a href="#1"><b>1. Before You Start</b></a></summary><a id="1"></a>
 <ul><details open><summary><a href="#1-1">1.1 Hardware Setup</a></summary><a id="1-1"></a>
 
@@ -21,9 +19,9 @@ To install X-LINUX-AI on your target device please follow the dedicated wiki pag
 
 - X-LINUX-AI expansion package: https://wiki.st.com/stm32mpu/wiki/Category:X-LINUX-AI_expansion_package
 
-To facilitate the deployment and avoid tools installation, the MPU deployment is based on [ST Edge AI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and making a free account.
+To facilitate the deployment and avoid tools installation, the MPU deployment is based on [STEdgeAI developer cloud](https://stedgeai-dc.st.com/home) to access the ST Edge AI functionalities without installing the software. This requires an internet connection and making a free account.
 
-You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](./README_MODELS.md) or your own semantic segmentation model. Please refer to the YAML file [deployment_mpu_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
+You can use the deployment service by using a model zoo pre-trained model from the [STM32 model zoo](./README_MODELS.md) or your own semantic segmentation model. Please refer to the YAML file [deployment_mpu_config.yaml](../config_file_examples/deployment_mpu_config.yaml), which is a ready YAML file with all the necessary sections ready to be filled, or you can update the [user_config.yaml](../user_config.yaml) to use it.
 
 As an example, we will show how to deploy the model [deeplabv3_257_int8_per_tensor.tflite](https://github.com/STMicroelectronics/meta-st-x-linux-ai/tree/main/recipes-samples/semantic-segmentation/models/files) pre-trained on the pascalvoc dataset. To use this model you should first download it from the X-LINUX-AI GitHub: https://github.com/STMicroelectronics/meta-st-x-linux-ai
 
@@ -33,16 +31,17 @@ As an example, we will show how to deploy the model [deeplabv3_257_int8_per_tens
 
 <ul><details open><summary><a href="#2-1">2.1 Setting the Model and the Operation Mode</a></summary><a id="2-1"></a>
 
-The first section of the configuration file is the `general` section that provides information about your project and the path to the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
+The first section of the configuration file is the `model` section that provides information about the model you want to deploy. The `operation_mode` attribute should be set to `deployment` as follows:
 
 ```yaml
-general:
+model:
+   model_type: deeplab
    model_path: ../path/to/X-LINUX-AI/deeplabv3_257_int8_per_tensor.tflite
 operation_mode: deployment
 ```
 
-In the `general` section, users must provide the path to their model file using the `model_path` attribute. This can be either a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
-In this example, the path to the Yolov8n-pose model is provided in the `model_path` parameter. Please check out the [STM32 model zoo](./README_MODELS.md) for more semantic segmentation models.
+In the `model` section, users must provide the path to their model file using the `model_path` attribute. This can be either a TensorFlow Lite model file with a `.tflite` filename extension (quantized model), or an ONNX model with a `.onnx` filename extension.
+Please check out the [STM32 model zoo](./README_MODELS.md) for more semantic segmentation models.
 
 You must copy the `preprocessing` section to your own configuration file, to ensure you have the correct preprocessing parameters.
 
@@ -57,10 +56,8 @@ The `class_names` attribute specifies the classes that the model is trained on. 
 The `dataset` attribute should be filled as follows:
 ```yaml
 dataset:
-   name: pascal_voc
-   class_names: [ "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-                  "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-                  "person", "potted plant", "sheep", "sofa", "train", "tv/monitor" ]
+   dataset_name: person_coco_2017_pascal_voc_2012
+   class_names: [ "background",  "person" ]
 ```
 
 </details></ul>
@@ -97,7 +94,6 @@ dataset:
    classes_file_path: ../application_code/semantic_segmentation/STM32MP-LINUX/Resources/labelmap.txt
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -125,19 +121,19 @@ where:
 </details></ul>
 <ul><details open><summary><a href="#2-4">2.4 Hydra and MLflow settings</a></summary><a id="2-4"></a>
 
-The `mlflow` and `hydra` sections must always be present in the YAML configuration file. The `hydra` section can be used to specify the name of the directory where experiment directories are saved and/or the pattern used to name experiment directories. With the YAML code below, every time you run the Model Zoo, an experiment directory is created that contains all the directories and files created during the run. The names of experiment directories are all unique as they are based on the date and time of the run.
+The `mlflow` and `hydra` sections must always be present in the YAML configuration file. The `hydra` section can be used to specify the name of the directory where experiment directories are saved and/or the pattern usesd to name experiment directories. With the YAML code below, every time you run the Model Zoo, an experiment directory is created that contains all the directories and files created during the run. The names of experiment directories are all unique as they are based on the date and time of the run.
 
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -151,16 +147,16 @@ If you chose to modify the [user_config.yaml](../user_config.yaml) you can deplo
 ```bash
 python stm32ai_main.py
 ```
-If you chose to update the [deployment_mpu_config.yaml](../src/config_file_examples/deployment_mpu_config.yaml) and use it then run the following command from the UC folder to build and flash the application on your board:
+If you chose to update the [deployment_mpu_config.yaml](../config_file_examples/deployment_mpu_config.yaml) and use it then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name deployment_mpu_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name deployment_mpu_config.yaml
 ```
 
-If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_mpu_config.yaml](../src/config_file_examples/chain_qd_mpu_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
+If you have a Keras model that has not been quantized and you want to quantize it before deploying it, you can use the `chain_qd` tool to quantize and deploy the model sequentially. To do this, update the [chain_qd_config.yaml](../config_file_examples/chain_qd_config.yaml) file and then run the following command from the UC folder to build and flash the application on your board:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qd_mpu_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qd_config.yaml
 ```
 
 When the application is running on the *STM32MPU* board, the LCD displays the following information:

@@ -1,6 +1,6 @@
 # Object detection STM32 model zoo
 
-Remember that minimalistic yaml files are available [here](../src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+Remember that minimalistic yaml files are available [here](../config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
 
 ## <a id="">Table of contents</a>
 
@@ -8,9 +8,10 @@ Remember that minimalistic yaml files are available [here](../src/config_file_ex
 2. [Object detection tutorial](#2)
    - [2.1 Choose the operation mode](#2-1)
    - [2.2 Global settings](#2-2)
-   - [2.3 Dataset specification](#2-3)
-   - [2.4 Apply image preprocessing](#2-4)
-   - [2.5 Use data augmentation](#2-5)
+   - [2.3 Model settings](#2-3)
+   - [2.4 Dataset specification](#2-4)
+   - [2.5 Apply image preprocessing](#2-5)
+   - [2.6 Use data augmentation](#2-6)
    - [2.6 Set the training parameters](#2-6)
    - [2.7 Set the postprocessing parameters](#2-7)
    - [2.8 Model quantization](#2-8)
@@ -40,7 +41,7 @@ To use the services in the Object detection model zoo, you can utilize the model
 More information about the different services and their configuration options can be found in the <a href="#2">next
 section</a>.
 
-The object detection datasets are expected to be in YOLO Darknet TXT format. For this project, we are using the Pascal VOC 2012 dataset, which can be downloaded directly in YOLO Darknet TXT format from [here](https://public.roboflow.com/object-detection/pascal-voc-2012/1/download/darknet).
+The object detection datasets are expected to be in TFS TensorFlow format. For this project, we are using the Pascal VOC 2012 dataset, which can be downloaded directly in YOLO Darknet TXT format from [here](https://public.roboflow.com/object-detection/pascal-voc-2012/1/download/darknet).
 
 An example of this structure is shown below:
 
@@ -109,7 +110,6 @@ The `general` section and its attributes are shown below.
 ```yaml
 general:
   project_name: Pascal_VOC_2012_Demo           # Project name. Optional, defaults to "<unnamed>".
-  model_type: st_ssd_mobilenet_v1   # Type of the model 
   logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
   saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
   #  model_path: <file-path>           # Path to a model file.
@@ -134,31 +134,54 @@ The `gpu_memory_limit` attribute sets an upper limit in GBytes on the amount of 
 an optional attribute with no default value. If it is not present, memory usage is unlimited. If you have several GPUs,
 be aware that the limit is only set on logical gpu[0].
 
-The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .h5 or .onnx models. 
+The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .keras or .onnx models. 
 This parameter may accelerate the tflite model evaluation in the following operation modes:  `evaluation` (if a .tflite is specified in `model_path`), 
 `chain_tbqeb`, `chain_eqe`, `chain_tqe` and `chain_eqeb` (if the quantizer is the TFlite_converter). 
 However, the acceleration depends on your system resources.
 
-The `model_path` attribute is utilized to indicate the path to the model file that you wish to use for the selected
-operation mode. The accepted formats for `model_path` are listed in the table below:
+</details></ul>
+<ul><details open><summary><a href="#2-3">2.3 Model settings</a></summary><a id="2-3"></a>
+The `model` section and its attributes are shown below.
 
-The `model_type` attribute specifies the type of the model architecture that you want to train. It is important to note that only certain models are supported. These models include:
+```yaml
+model:
+  model_type: st_yoloxn
+  model_name: st_yoloxn
+  model_path: 
+```
 
-- `ssd_mobilenet_v2_fpnlite`: This is a Single Shot Detector (SSD) architecture that uses a MobileNetV2 backbone and a Feature Pyramid Network (FPN) head. It is designed to be fast and accurate, and is well-suited for use cases where real-time object detection is required.
+The `model_path` attribute is utilized to indicate the path to the model file that you wish to use for the selected operation mode. 
 
-- `st_ssd_mobilenet_v1`: This is a variant of the SSD architecture that uses a MobileNetV1 backbone and a custom head(ST). It is designed to be robust to scale and orientation changes in the input images.
+The `model_type` attribute specifies the type of the model architecture that you want to train, the model family. The `model_name` attribute specifies the exact variant to use within the `model_type` family.
+It is important to note that only certain models are supported. These models include:
 
-- `yolo_v8` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv8 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov8 model deployment.
+- `yolov8n` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv8 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov8 model deployment.
 
-- `yolo_v11` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv11 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov11 model deployment.
+- `yolov11n` : is an advanced object detection model from Ultralytics that builds upon the strengths of its predecessors in the YOLO series. It is designed for real-time object detection, offering high accuracy and speed. YOLOv11 incorporates state-of-the-art techniques such as improved backbone networks, better feature pyramid networks, and advanced anchor-free detection heads, making it highly efficient for various computer vision tasks. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov8 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov11 model deployment.
 
-- `yolo_v5u`: (You Only Look Once version 5 from Ultralytics) is a popular object detection model known for its balance of speed and accuracy. It is part of the YOLO family and is designed to perform real-time object detection. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov5 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov5u model deployment.
+- `yolov5u`: (You Only Look Once version 5 from Ultralytics) is a popular object detection model known for its balance of speed and accuracy. It is part of the YOLO family and is designed to perform real-time object detection. Don't hesitate to check the tuto ["How can I quantize, evaluate and deploy an Ultralytics Yolov5 model?"](./tuto/How_to_deploy_yolov8_yolov5_object_detection.md) for more information on Ultralytics Yolov5u model deployment.
  
-- `st_yolo_x`: is an advanced object detection model that builds upon the YOLO (You Only Look Once) series, offering significant improvements in performance and flexibility. Unlike its predecessors, YOLOX can adopt an anchor-free approach, which simplifies the model and enhances its accuracy. It also incorporates advanced techniques such as decoupled head structures for classification and localization, and a more efficient training strategy. YOLOX is designed to achieve high accuracy and speed, making it suitable for real-time applications in various computer vision tasks. This ST variant embeds various tuning capabilities from the yaml configuration file.
+- `st_yoloxn`: is an advanced object detection model that builds upon the YOLO (You Only Look Once) series, offering significant improvements in performance and flexibility. Unlike its predecessors, YOLOX can adopt an anchor-free approach, which simplifies the model and enhances its accuracy. It also incorporates advanced techniques such as decoupled head structures for classification and localization, and a more efficient training strategy. YOLOX is designed to achieve high accuracy and speed, making it suitable for real-time applications in various computer vision tasks. This ST variant embeds various tuning capabilities from the yaml configuration file.
  
-- `st_yolo_lc_v1`: This is a lightweight version of the tiny yolo v2 object detection algorithm. It was optimized to work well on embedded devices with limited computational resources.
+- `st_yololcv1`: This is a lightweight version of the tiny yolo v2 object detection algorithm. It was optimized to work well on embedded devices with limited computational resources.
 
-- `tiny_yolo_v2`: This is a lightweight version of the YOLO (You Only Look Once) object detection algorithm. It is designed to work well on embedded devices with limited computational resources.
+- `yolov2t`: This is a lightweight version of the YOLO (You Only Look Once) object detection algorithm. It is designed to work well on embedded devices with limited computational resources.
+
+The exhaustive list of `model_type` and corresponding `model_name` is the following: 
+
+|`model_type`           | possible `model_name`| 
+|-----------------------|----------------------|
+| `yolov8n`             | X         |
+| `yolov11n`            | X         |
+| `yolov5u`             | X         |
+| `st_yoloxn`           | `st_yoloxn`, `st_yoloxn_d033_w025`, `st_yoloxn_d100_w025`, `st_yoloxn_d050_w040`        |
+| `st_yololcv1`         | `st_yololcv1`|
+| `yolov2t`             |  `yolov2t`   |
+| `yolov4`              | X            |
+| `yolov4t`             | X            |
+| `face_detect_front`   | X            |
+
+When no `model_name` attribute is possible, `model_path` is to be used.
 
 It is important to note that each model type has specific requirements in terms of input image size, output size of the head and/or backbone, and other parameters. Therefore, it is important to choose the appropriate model type for your
 specific use case, and to configure the training process accordingly.
@@ -177,16 +200,20 @@ the [readme](./README_TRAINING.md) file for the train service. However, in this 
 not used since we are using a pre-trained model from the Model Zoo.
 
 </details></ul>
-<ul><details open><summary><a href="#2-3">2.3 Dataset specification</a></summary><a id="2-3"></a>
+<ul><details open><summary><a href="#2-4">2.4 Dataset specification</a></summary><a id="2-4"></a>
 
-Before you start using this project It's important to convert your dataset to the `tfs format`, to do so you can use our [tfs converter](./README_DATASETS_CONVERTER.md). Please note that the converter expects as input the [yolo darknet txt format](https://roboflow.com/formats/yolo-darknet-txt).
+Before you start using this project, it's important to understand the supported dataset names and formats. Please note that for all the training, evaluation and quantization services, it is expected to have a dataset in TFS Tensorflow format. For the object detection use case, the `get_dataset` API call takes care of the conversion of your dataset automatically depending on the `dataset_name` and `format` attributes.
 
 The `dataset` section and its attributes are shown in the YAML code below.
 
 ```yaml
 dataset:
-  dataset_name: Pascal_VOC_2012                                    # Dataset name. Optional, defaults to "<unnamed>".
+  format: pascal_voc
+  dataset_name: pascal_voc                                    # Dataset name. Optional, defaults to "<unnamed>".
   class_names: [ aeroplane,bicycle,bird,boat,bottle,bus,car,cat,chair,cow,diningtable,dog,horse,motorbike,person,pottedplant,sheep,sofa,train,tvmonitor ] # Names of the classes in the dataset.
+  data_dir: ./datasets/pascal_voc/tmp/                       # Path to the tmp directory before the split.
+  train_images_path: /local/datasets/VOC0712/JPEGImages/     # Path to the root directory of the img before split.
+  train_xml_dir: /local/datasets/VOC0712/Annotations         # Path to the root directory of the xml annotations
   training_path: <training-set-root-directory>               # Path to the root directory of the training set.
   validation_path: <validation-set-root-directory>           # Path to the root directory of the validation set.
   validation_split: 0.2                                      # Training/validation sets split ratio.
@@ -196,9 +223,101 @@ dataset:
   seed: 123                                                  # Random generator seed used when splitting a dataset.
 ```
 
-The `name` attribute is optional and can be used to specify the name of your dataset.
+The `dataset_name` attribute is required and serves to specify the dataset you are using. This can be a well-known dataset like coco, pascal_voc, or a custom_dataset if you have your own data and it follows the logic below:
+
+| Dataset Name     | Allowed Formats          | Description                                                                                  |
+|------------------|-------------------------|----------------------------------------------------------------------------------------------|
+| `coco`           | `coco`, `tfs`           | Native COCO format or TFS TensorFlow format                                                     |
+| `pascal_voc`     | `pascal_voc`, `tfs`     | Native Pascal VOC format or TFS TensorFlow format                                               |
+| `darknet_yolo`   | `darknet_yolo`, `tfs`   | Native Darknet YOLO format or TFS TensorFlow format                                             |
+| `custom_dataset` | `tfs`                   | Only TFS TensorFlow format; in case the dataset is already converted before evaluation                          |
+
+Depending on the `dataset_name`, the dataset loader will check the `format` to determine if it is necessary to convert the dataset to the final **TFS TensorFlow format**. These two parameters are mandatory if the operation mode is **training**, **evaluation** and **quantization**.
+
+The `format` attributes defines the annotation format of your dataset. This must match the format of your dataset annotations. 
+It serves to check whether your dataset is in its original format or in TFS TensorFlow format. 
+This determines whether it is needed to convert the dataset to the required TFS format or not. It accepts the following values: 
+
+  * `tfs`: If the dataset is a TensorFlow Object Detection API format.
+  * `coco`: If the dataset is in COCO dataset format (JSON annotations).
+  * `pascal_voc`: If the dataset is in Pascal VOC XML annotation format.
+  * `darknet_yolo`: If the dataset is in YOLO Darknet text file annotations.
+
+Depending on the `format` value, some additional attributes should be defined in the dataset section:
+- If the `format` is set to **coco**, the following attributes should be set:
+  * The `data_dir`: Required, refers to the temporary path where the TFS files will be generated.
+  * The `train_images_path`: Required, refers to the path of the training subset directory where the images are located.
+  * The `train_annotations_path`: Required, refers to the path of the training subset json file of the annotations.
+  * The `val_images_path`: Optional, refers to the path of the validation subset directory where the images are located.
+  * The `val_annotations_path`: Optional, refers to the path of the training subset json file of the annotations.
+
+- If the `format` is set to **pascal_voc**, the following attributes should be set:
+  * The `data_dir`: Required, refers to the temporary path where the TFS files will be generated.
+  * The `train_images_path`: Required, refers to the path of the training subset directory where the images are located.
+  * The `train_xml_dir`: Required, refers to the path of the training subset directory containing the xml files of the annotations.
+  * The `val_images_path`: Optional, refers to the path of the validation subset directory where the images are located.
+  * The `val_xml_dir`: Optional, refers to the path of the training subset directory containing the xml files of the annotations.
+
+- If the `format` is set to **darknet_yolo**, the following attributes should be set:
+  * The `data_dir`: Required, refers to the path of the directory containing the txt files of the annotations along with the images.
+
+
+The state machine below describes the process of dataset loading for object detection use case.
+
+
+```
+                                                   dataset_name
+                                                         |
+                                                         |
+        +----------------------------------+--------------------------+-------------------------------+
+        |                                  |                          |                               |
+        |                                  |                          |                               |
+      "coco"                           "pascal_voc"              "darknet_yolo"                "custom_dataset"
+        |                                  |                          |                               |
+        |                                  |                          |                               |
+  +-----+------------+           +-----+-----------+          +-------+-------+               +-------+-------+ 
+  |                  |           |                 |          |               |               |               |
+supported        unsupported    supported    unsupported   supported     unsupported      supported      unsupported        
+ format:           format        format         format      format:        format           format         format
+      |                             |                           |                             |
+  +---+-----+                   +---+---+                  +----+-----+                       |
+  |         |                   |       |                  |          |                       |
+ coco      tfs             pascal_voc  tfs            darknet_yolo   tfs                     tfs
+  |         |                   |       |                  |          |                   (Custom dataset
+  |         |                   |       |                  |          |                    should be used
+  |         |                   |       |                  |          |                   if the conversion
+  |   dataset.format=tfs        |  dataset.format=tfs      |    dataset.format=tfs         has already been
+  |   (already TFS)             |    (already TFS)         |      (already TFS)            done in a previous
+  |         |                   |       |                  |          |                    training or eval)
+  |         |                   |       |                  |          |                       |
+  |   load TFS directly         |   load TFS directly      |      load TFS directly      load TFS directly
+  |                             |                          |                                  |
+  |                             |                          |                                  |
+dataset.format=coco     dataset.format=pascal_voc      dataset.format=darknet_yolo            |
+(needs conversion)         (needs conversion)             (needs conversion)                  |
+        |                         |                               |                           |
+        v                         v                               v                           |
+convert coco to tfs      convert pascal_voc to tfs     convert darknet yolo to tfs            |
+        |                         |                               |                           |
+        +-------------------------+-------------------------------+---------------------------+
+                                                |
+                                        Dataset in TFS format
+                                            (used for)
+                          +---------------------+-----------------------+
+                          |                     |                       |
+                      training             evaluation             quantization
+
+```
+
 
 The `class_names` attribute specifies the classes in the dataset. This information must be provided in the YAML file. If the `class_names` attribute is absent, the `classes_name_file` argument can be used as an alternative, pointing to a text file containing the class names.
+
+The attribute `download_data` is a boolean flag that is supported only if the `dataset_name` is set to **coco** or **pascal_voc**. It used to control whether the dataset should be automatically downloaded from the official source if it is not already present locally.
+
+- If set to true, the system will attempt to download the dataset from the official source of each of the datasets.
+- If set to false, the system expects the dataset to be already available locally and will not perform any download operation.
+
+The `exclude_unlabeled` attribute is a boolean flag that, when set to True, instructs the dataset loader or processing script to exclude images that do not contain any labeled objects (i.e., images without annotations) from the training or evaluation dataset.
 
 When a training is run, the training set is split in two to create a validation dataset if `validation_path` is not
 provided. When a model accuracy evaluation is run, the test set is used if there is one, otherwise the validation set is
@@ -215,7 +334,7 @@ quite large and the quantization process can take a long time to run. To avoid t
 the `quantization_split` attribute to use only a portion of the dataset for quantization.
 
 </details></ul>
-<ul><details open><summary><a href="#2-4">2.4 Apply image preprocessing</a></summary><a id="2-4"></a>
+<ul><details open><summary><a href="#2-5">2.5 Apply image preprocessing</a></summary><a id="2-5"></a>
 
 Object detection requires images to be preprocessed by rescaling and resizing them before they can be used. This is
 specified in the 'preprocessing' section, which is mandatory in all operation modes. Additionally, bounding boxes should
@@ -254,7 +373,7 @@ the resized images.
 The `color_mode` attribute can be set to either *"grayscale"*, *"rgb"* or *"rgba"*.
 
 </details></ul>
-<ul><details open><summary><a href="#2-5">2.5 Use data augmentation</a></summary><a id="2-5"></a>
+<ul><details open><summary><a href="#2-6">2.6 Use data augmentation</a></summary><a id="2-6"></a>
 
 The data augmentation functions to apply to the input images during a training are specified in the
 optional `data_augmentation` section of the configuration file. They are only applied to the images during training.
@@ -277,11 +396,11 @@ input images and the modification of the annotations file to ensure that the mod
 representative data.
 
 </details></ul>
-<ul><details open><summary><a href="#2-6">2.6 Set the training parameters</a></summary><a id="2-6"></a>
+<ul><details open><summary><a href="#2-7">2.7 Set the training parameters</a></summary><a id="2-7"></a>
 
-A 'training' section is required in all the operation modes that include a training, namely 'training', 'chain_tqeb' and 'chain_tqe'. In this tutorial, we will be using a custom object detection model called st_ssd_mobilenet_v1. This model is a custom SSD (Single Shot Detector) model that uses MobileNetv1 as its backbone. The backbone weights have been pre-trained on the ImageNet dataset, which is a large dataset consisting of 1.4 million images and 1000 classes.
+A 'training' section is required in all the operation modes that include a training, namely 'training', 'chain_tqeb' and 'chain_tqe'. In this tutorial, we will be using a custom object detection model called st_yoloxn.
 
-As an example, we will be using our custom st_ssd_mobilenet_v1 model, which uses a MobileNet V1 with an alpha value of 0.25 as its backbone, to do so we will need to configure the model section in [user_config.yaml](../user_config.yaml) as the following:
+As an example, we will be using our custom st_yoloxn model, which uses a MobileNet V1 with an alpha value of 0.25 as its backbone, to do so we will need to configure the model section in [user_config.yaml](../user_config.yaml) as the following:
 
 ```yaml
 training:
@@ -316,8 +435,8 @@ The `model` subsection is used to specify a model that is available with the Mod
 - The `input_shape` attribute must always be present.
 - Additional attributes are needed depending on the type of model. For example:
   - `alpha` attribute is required for SSD MobileNet models.
-  - `depth_mul` st_yolo_x attribute, It is a multiplier for the depth of the network, default value is 0.33. Recommended values for optimum performance are: 0.34, 0.67, 1.0, 1.34, 1.67, ...
-  - `width_mul` st_yolo_x attribute, It is a multiplier for the width of the network, default value is 0.25. Recommended values for optimum performance are: 0.25 +- x * 0.03125
+  - `depth_mul` st_yoloxn attribute, It is a multiplier for the depth of the network, default value is 0.33. Recommended values for optimum performance are: 0.34, 0.67, 1.0, 1.34, 1.67, ...
+  - `width_mul` st_yoloxn attribute, It is a multiplier for the width of the network, default value is 0.25. Recommended values for optimum performance are: 0.25 +- x * 0.03125
 
 The `batch_size` and `epochs` attributes are mandatory.
 
@@ -336,11 +455,11 @@ in the `callbacks` subsection. Refer to the training service [README](./README_T
 available callbacks and learning rate plotting utility.
 
 The best model obtained at the end of the training is saved in the 'experiments_outputs/\<date-and-time\>/saved_models'
-directory and is called 'best_model.h5' (see section <a href="#4">visualize the chained services results</a>).
+directory and is called 'best_model.keras' (see section <a href="#4">visualize the chained services results</a>).
 
 </details></ul>
 
-<ul><details open><summary><a href="#2-7">2.7 Set the postprocessing parameters</a></summary><a id="2-7"></a>
+<ul><details open><summary><a href="#2-8">2.8 Set the postprocessing parameters</a></summary><a id="2-8"></a>
 
 A 'postprocessing' section is required in all operation modes for object detection models. This section includes
 parameters such as NMS threshold, confidence threshold, IoU evaluation threshold, and maximum detection boxes. These
@@ -368,7 +487,7 @@ postprocessing:
 Overall, improving object detection requires careful tuning of these post-processing parameters based on your specific use case. Experimenting with different values and evaluating the results can help you find the optimal values for your object detection model.
 
 </details></ul>
-<ul><details open><summary><a href="#2-8">2.8 model quantization </a></summary><a id="2-8"></a>
+<ul><details open><summary><a href="#2-9">2.9 model quantization </a></summary><a id="2-9"></a>
 
 The `quantization` section is required in all the operation modes that include a quantization, namely `quantization`, `chain_tqe`, `chain_tqeb`, `chain_eqe`, `chain_eqeb`, `chain_qb`, and `chain_qd`.
 
@@ -417,23 +536,21 @@ You may use the optional `export_dir` attribute to change the name of this direc
 
 </details></ul>
 
-<ul><details open><summary><a href="#2-9">2.9 Benchmark the model</a></summary><a id="2-9"></a>
+<ul><details open><summary><a href="#2-10">2.10 Benchmark the model</a></summary><a id="2-10"></a>
 
-The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its
+The [STEdgeAI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its
 footprints and inference time for different STM32 target devices. To use this feature, set the `on_cloud` attribute to
-True. Alternatively, you can use [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to benchmark
+True. Alternatively, you can use [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to benchmark
 your model and estimate its footprints for STM32 target devices locally. To do this, make sure to add the path to
 the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to False.
 
-The `version` attribute specifies the **STM32Cube.AI** version used to benchmark the model, e.g. 10.0.0, and
-the `optimization` defines the optimization used to generate the C model, options: "balanced", "time", "ram".
+The `optimization` defines the optimization used to generate the C model, options: "balanced", "time", "ram".
 
 The `board` attribute is used to provide the name of the STM32 board to benchmark the model on. The available boards are 'STM32H747I-DISCO', 'STM32H7B3I-DK', 'STM32F469I-DISCO', 'B-U585I-IOT02A', 'STM32L4R9I-DISCO', 'NUCLEO-H743ZI2', 'STM32H747I-DISCO', 'STM32H735G-DK', 'STM32F769I-DISCO', 'NUCLEO-G474RE', 'NUCLEO-F401RE' and 'STM32F746G-DISCO'.
 
 ```yaml
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -456,9 +573,14 @@ to `deploy` and modifying the `user_config.yaml` file as described below:
 
 ```yaml
 general:
+  project: my_project
+
+model:
   model_path: <path-to-a-TFlite-model-file>     # Path to the model file to deploy
 
 dataset:
+  format: tfs
+  dataset_name: pascal_voc
   class_names: [ aeroplane,bicycle,bird,boat,bottle,bus,car,cat,chair,cow,diningtable,dog,horse,motorbike,person,pottedplant,sheep,sofa,train,tvmonitor ]
 
 postprocessing:
@@ -470,7 +592,6 @@ postprocessing:
 
 tools:
   stedgeai:
-    version: 10.0.0
     optimization: balanced
     on_cloud: True
     path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -485,10 +606,12 @@ deployment:
     board: STM32H747I-DISCO
 ```
 
-In the `general` section, users must provide the path to the TFlite model file that they want to deploy using
+In the `general` section, users must provide the name of the current project.
+
+In the `model` section, user must provide the path to the TFlite model file that they want to deploy using
 the `model_path` attribute.
 
-The `dataset` section requires users to provide the names of the classes using the `class_names` attribute.
+The `dataset` section requires users to provide the `dataset_name`, the `format` and  the names of the classes using the `class_names` attribute.
 
 The `postprocessing` section requires users to provide the values for the post-processing parameters. These parameters
 include the `NMS_thresh`, `confidence_thresh`, `IoU_eval_thresh`, and `max_detection_boxes`. By providing
@@ -519,7 +642,7 @@ chained services results</a>:
 ```yaml
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown
@@ -527,7 +650,7 @@ below:
 
 ```yaml
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details></ul>
@@ -579,9 +702,9 @@ This is illustrated in the figure below.
       |                                   |                                |            |
  saved_models                      quantized_models                       logs        .hydra
       |                                   |                                |            |
-      +--- best_augmented_model.h5        +--- quantized_model.h5     TensorBoard     Hydra
-      +--- last_augmented_model.h5                                       files        files
-      +--- best_model.h5
+      +--- best_augmented_model.keras     +--- quantized_model.keras   TensorBoard     Hydra
+      +--- last_augmented_model.keras                                     files        files
+      +--- best_model.keras
 ```
 
 The file named 'stm32ai_main.log' under each experiment directory is the log file saved during the execution of the '
@@ -590,9 +713,9 @@ below.
 
 |  File             |  Directory | Contents               |
 |:-------------------|:-------------------------|:-----------------------|
-| best_augmented_model.h5 | saved_models | Best model saved during training, rescaling and data augmentation layers included (Keras) |
-| last_augmented_model.h5 | saved_models | Last model saved at the end of a training, rescaling and data augmentation layers included (Keras) |
-| best_model.h5           | saved_models | Best model obtained at the end of a training (Keras) |
+| best_augmented_model.keras | saved_models | Best model saved during training, rescaling and data augmentation layers included (Keras) |
+| last_augmented_model.keras | saved_models | Last model saved at the end of a training, rescaling and data augmentation layers included (Keras) |
+| best_model.keras           | saved_models | Best model obtained at the end of a training (Keras) |
 | quantized_model.tflite  | quantized_models | Quantized model (TFlite) |
 | training_metrics.csv    | metrics | Training metrics CSV including epochs, losses, accuracies and learning rate |
 | training_curves.png     | metrics | Training learning curves (losses and accuracies) |
@@ -602,7 +725,7 @@ below.
 All the directory names, including the naming pattern of experiment directories, can be changed using the configuration
 file. The names of the files cannot be changed.
 
-The models in the 'best_augmented_model.h5' and 'last_augmented_model.h5' Keras files contain rescaling and data
+The models in the 'best_augmented_model.keras' and 'last_augmented_model.keras' Keras files contain rescaling and data
 augmentation layers. These files can be used to resume a training that you interrupted or that crashed. This will be
 explained in section training service [README](./README_TRAINING.md). These model files are not intended to be used
 outside of the Model Zoo context.

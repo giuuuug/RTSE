@@ -84,7 +84,7 @@ You can find the quantization scripts here:
 [https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/tutorials/scripts/yolov8_quantization](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/tutorials/scripts/yolov8_quantization)
 
 Features:
-* The script can take in input a saved model (tensor flow or Keras) or a Keras h5
+* The script can take in input a saved model (tensorflow or Keras) or a Keras h5
 * The script supports per channel or per tensor quantization
 * The script can do fake quantization or use a specified calibration dataset (mandatory to have meaningful accuracy)
 * The script supports different configurations for input / output, float, int8 or uint8

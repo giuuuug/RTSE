@@ -34,13 +34,13 @@ The most important parts to define are:
 ```yaml
 # user_config.yaml
 
-general:
-   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplab_v3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/deeplab_v3_mobilenetv2_05_16_320/deeplab_v3_mobilenetv2_05_16_320_asppv2.h5
+model:
+   model_path: ../../stm32ai-modelzoo/semantic_segmentation/deeplabv3/ST_pretrainedmodel_public_dataset/person_coco_2017_pascal_voc_2012/st_deeplabv3_mnv2_a050_s16_asppv2_320/st_deeplabv3_mnv2_a050_s16_asppv2_320.keras
 
 operation_mode: chain_eqe
 
 dataset:
-   name: pascal_voc_person
+   dataset_name: person_coco_2017_pascal_voc_2012
    class_names: [ "background", "person" ]
    test_path: ./datasets/person_coco_2017_pascal_voc_2012/JPEGImages
    test_masks_path: ./datasets/person_coco_2017_pascal_voc_2012/SegmentationClassAug
@@ -66,19 +66,20 @@ quantization:
   quantization_type: PTQ
   quantization_input_type: float
   quantization_output_type: float
-  extra_options: calib_moving_average
+  onnx_extra_options: 
+    CalibMovingAverage: True
   export_dir: quantized_models
 
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 When evaluating the model, it is highly recommended to use real data for the final quantization.
 
-You can also find examples of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 
 ## Run the script:

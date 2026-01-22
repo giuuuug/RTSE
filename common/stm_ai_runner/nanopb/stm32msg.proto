@@ -24,13 +24,14 @@
 //  3.0 - Refactoring Msg definition (no compatible with the previous version)
 //        add ATON RT support, simplify exchanged strcuture...
 //  3.1 - Adding support/definition for Perf counters (exp)
+//  3.2 - Adding DISCONNECT cmd + IN/OUT packet
 
 syntax = "proto2";
 
 enum EnumVersion {
     // option allow_alias = true;
 	P_VERSION_MAJOR = 3;
-	P_VERSION_MINOR = 1;
+	P_VERSION_MINOR = 2;
 }
 
 // IO Low level interface definition (packet mode)
@@ -91,6 +92,7 @@ enum EnumCapability {
 	CAP_READ_WRITE = 8;
 	CAP_RANDOM = 16;
 	CAP_FILTERING = 32;
+	CAP_USBC = 64;
 	CAP_SELF_TEST = 128 ;  // (1 << 7);
 }
 
@@ -98,6 +100,7 @@ enum EnumCapability {
 enum EnumCmd {
 	CMD_SYNC = 0;
 	CMD_SYS_INFO = 1;
+	CMD_DISCONNECT = 2;
 	
 	CMD_NETWORK_INFO = 10;
 	CMD_NETWORK_RUN = 11;
@@ -285,7 +288,6 @@ message aiModelInfoMsg {
 	required uint32 tool_version = 6;          // tool version ( major << 24 | minor << 16 | sub/patch << 8 )
 	required uint64 n_macc = 7;                // model complexity exprimed in equivalent macc
 	required uint32 n_nodes = 8;               // number of c-operators
-
 	required uint32 n_inputs = 10;             // number of inputs
 	repeated aiTensorDescMsg inputs = 11;      // description of the inputs
 	required uint32 n_outputs = 12;            // number of the ouputs
@@ -296,6 +298,9 @@ message aiModelInfoMsg {
 	repeated aiTensorDescMsg params = 17;      // description of the RO memory segments
 	
 	required string runtime_desc = 20;         // short description of the used runtime lib (max 64 Bytes)
+	required float n_install_time = 21;        // network install time (ms)
+	required float n_init_time = 22;           // network init time (ms)
+
 }
 
 // Sub RESP message (STM32 to HOST)

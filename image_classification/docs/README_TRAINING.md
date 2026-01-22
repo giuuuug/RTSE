@@ -21,7 +21,7 @@ The names of the subdirectories under the dataset root directory are the names o
 As an example, the directory tree of the Flowers dataset is shown below:
 
 ```bash
-flowers/
+tf_flowers/
    daisy/
    dandelion/
    roses/
@@ -44,6 +44,7 @@ For training, the configuration file should include at least the following secti
 
 - `general`, describes your project, including project name, directory where to save models, etc.
 - `operation_mode`, describes the service or chained services to be used.
+- `model`, model detailed specification.
 - `dataset`, describes the dataset you are using, including directory paths, class names, etc.
 - `preprocessing`, specifies the methods you want to use for rescaling and resizing the images.
 - `training`, specifies your training setup, including batch size, number of epochs, optimizer, callbacks, etc.
@@ -77,7 +78,7 @@ Information about the dataset you want to use is provided in the `dataset` secti
 
 ```yaml
 dataset:
-   name: flowers
+   dataset_name: tf_flowers
    class_names: [daisy, dandelion, roses, sunflowers, tulips]
    training_path: ../datasets/flower_photos
    validation_path:
@@ -149,23 +150,20 @@ A script called *test_data_augment.py* is available in the **data_augmentation**
 
 <details open><summary><a href="#2-6">2.6 Loading a model</a></summary><a id="2-6"></a>
 
-Information about the model you want to train is provided in the `training` section of the configuration file.
+Information about the model you want to train is provided in the `model` section of the configuration file.
 
 The YAML code below shows how you can use a MobileNet V2 model from the Model Zoo.
 
 ```yaml
-training:
-   model:
-      name: mobilenet
-      version: v2
-      alpha: 0.35
-      pretrained_weights: imagenet
-      input_shape: (224, 224, 3)
+model:
+   model_name: mobilenetv2_a035 # name of an already existing model in the ST storage
+   pretrained: True
+   input_shape: (224, 224, 3) # input tensor dimensions, channel last for tensorflow
 ```
 
-The `pretrained_weights` attribute is set to "imagenet", which indicates that you want to load the weights pretrained on the ImageNet dataset and do a *transfer learning* type of training.
+The `pretrained` attribute is set to "True", which indicates that you want to load the weights pretrained on the imagenet dataset and do a *transfer learning* type of training.
 
-If `pretrained_weights` was set to "None", no pretrained weights would be loaded in the model and the training would start *from scratch*, i.e., from randomly initialized weights.
+If `pretrained` was set to "False", no pretrained weights would be loaded in the model and the training would start *from scratch*, i.e., from randomly initialized weights.
 
 </details>
 
@@ -221,14 +219,14 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 
 </details>
@@ -241,9 +239,9 @@ mlflow:
 To launch your model training using a real dataset, run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name training_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name training_config.yaml
 ```
-The trained .h5 model can be found in the corresponding **experiments_outputs/** folder.
+The trained .keras model can be found in the corresponding **experiments_outputs/** folder.
 
 </details>
 
@@ -293,15 +291,17 @@ And open the given IP address in your browser.
 
 You may want to train your own model rather than a model from the Model Zoo.
 
-This can be done using the `model_path` attribute of the `general:` section to provide the path to the model file to use, as illustrated in the example below.
+This can be done using the `model_path` attribute of the `model` section to provide the path to the model file to use, as illustrated in the example below.
 
 ```yaml
-general:
+model:
    model_path: <path-to-a-Keras-model-file>    # Path to the model file to use for training
 
 operation_mode: training
 
 dataset:
+   dataset_name: tf_flowers # for example
+   class_names: [daisy, dandelion, roses, sunflowers, tulips]
    training_path: <training-set-root-directory>    # Path to the root directory of the training set.
    validation_split: 0.2                           # Use 20% of the training set to create the validation set.
    test_path: <test-set-root-directory>            # Path to the root directory of the test set.
@@ -321,9 +321,7 @@ training:
          patience: 10
 ```
 
-The model file must be a Keras model file with a '.h5' filename extension.
-
-The `model:` subsection of the `training:` section is not present as we are not training a model from the Model Zoo. An error will be thrown if it is present when `model_path` is set.
+The model file must be a Keras model file with a '.keras' filename extension.
 
 About the model loaded from the file:
 - If some layers are frozen in the model, they will be reset to trainable before training. You can use the `frozen_layers` attribute if you want to freeze these layers (or different ones).
@@ -336,14 +334,19 @@ About the model loaded from the file:
 
 You may want to resume a training that you interrupted or that crashed.
 
-When running a training, the model is saved at the end of each epoch in the **'saved_models'** directory that is under the experiment directory (see section "2.2 Output directories and files"). The model file is named 'last_augmented_model.h5'.
+When running a training, the model is saved at the end of each epoch in the **'saved_models'** directory that is under the experiment directory. The model file is named 'last_augmented_model.keras'.
 
-To resume a training, you first need to choose the experiment you want to restart from. Then, set the `resume_training_from` attribute of the 'training' section to the path to the 'last_augmented_model.h5' file of the experiment. An example is shown below.
+To resume a training, you first need to choose the experiment you want to restart from. Then, set the `resume_training_from` attribute of the `training` section has to be set to True and the `model_path` attribute of the `model` section must contain the path to the 'last_augmented_model.keras' file of the experiment. An example is shown below.
 
 ```yaml
 operation_mode: training
 
+model:
+   model_path: <path to the 'last_augmented_model.keras' file of the interrupted/crashed training>
+
 dataset:
+   dataset_name: tf_flowers # for example
+   class_names: [daisy, dandelion, roses, sunflowers, tulips]
    training_path: <training-set-root-directory>
    validation_split: 0.2
    test_path: <test-set-root-directory>
@@ -361,71 +364,45 @@ training:
          monitor: val_accuracy
          factor: 0.1
          patience: 10
-   resume_training_from: <path to the 'last_augmented_model.h5' file of the interrupted/crashed training>
+   resume_training_from: True
 ```
-
-When setting the `resume_training_from` attribute, the `model:` subsection of the `training:` section and the `model_path` attribute of the `general:` section should not be used. An error will be thrown if you do so.
 
 The configuration file of the training you are resuming should be reused as is, the only exception being the number of epochs. If you make changes to the dropout rate, the frozen layers or the optimizer, they will be ignored and the original settings will be kept. Changes made to the batch size or the callback section will be taken into account. However, they may lead to unexpected results.
 
-The state of the optimizer is saved in the **last_augmented_model.h5** file, so you will restart from where you left off. The model is called 'augmented' because it includes the rescaling and data augmentation preprocessing layers.
+The state of the optimizer is saved in the **last_augmented_model.keras** file, so you will restart from where you left off. The model is called 'augmented' because it includes the rescaling and data augmentation preprocessing layers.
 
-There are two other model files in the **saved_models** directory. The one that is called **best_augmented_model.h5** is the best augmented model that was obtained since the beginning of the training. The other one that is called **best_model.h5** is the same model as **best_augmented_model.h5**, but it does not include the preprocessing layers and cannot be used to resume a training. An error will be thrown if you attempt to do so.
+There are two other model files in the **saved_models** directory. The one that is called **best_augmented_model.keras** is the best augmented model that was obtained since the beginning of the training. The other one that is called **best_model.keras** is the same model as **best_augmented_model.keras**, but it does not include the preprocessing layers and cannot be used to resume a training. An error will be thrown if you attempt to do so.
 
 </details>
 
 <details open><summary><a href="#5-3">5.3 Transfer learning</a></summary><a id="5-3"></a>
 
-Transfer learning is a popular training methodology that is used to take advantage of models trained on large datasets, such as ImageNet. The Model Zoo features that are available to implement transfer training are presented in the next sections.
+Transfer learning is a popular training methodology that is used to take advantage of models trained on large datasets, such as imagenet. The Model Zoo features that are available to implement transfer training are presented in the next sections.
 
 <ul>
-<details open><summary><a href="#5-3-1">5.3.1 Using ImageNet pretrained weights</a></summary><a id="5-3-1"></a>
+<details open><summary><a href="#5-3-1">5.3.1 Using imagenet pretrained weights</a></summary><a id="5-3-1"></a>
 
-Weights pretrained on the ImageNet dataset are available for the MobileNet-V1 and MobileNet-V2 models.
+Weights pretrained on the imagenet dataset are available for the MobileNetv1, MobileNetv2 models, Resnet50v2 and EfficientNetv2.
 
-If you want to use these pretrained weights, you need to add the `pretrained_weights` attribute to the `model:` subsection of the 'training' section of the configuration file and set it to 'imagenet', as shown in the YAML code below.
+If you want to use imagenet pretrained weights, you need to add the `pretrained` attribute to the `model` section of the configuration file and set it to 'True', as shown in the YAML code below.
 
 ```yaml
-training:
-   model:
-      name: mobilenet
-      version: v2
-      alpha: 0.35
-      input_shape: (224, 224, 3)
-      pretrained_weights: imagenet
+model:
+   model_name: mobilenetv2_a035
+   input_shape: (224, 224, 3)
+   pretrained: True
 ```
 
-By default, no pretrained weights are loaded. If you want to make it explicit that you are not using the ImageNet weights, you may add the `pretrained_weights` attribute and leave it unset or set to *None*.
+By default, no pretrained weights are loaded. If you want to make it explicit that you are not using the imagenet weights, you may add the `pretrained` attribute and set it to `False`.
 
 </details>
 
-<details open><summary><a href="#5-3-2">5.3.2 Using weights from another model</a></summary><a id="5-3-2"></a>
 
-When you train a model, you may want to take advantage of the weights from another model that was previously trained on another, larger dataset.
-
-Assume for example that you are training a MobileNet-V2 model on the Flowers dataset and you want to take advantage of the weights of another MobileNet-V2 model that you previously trained on the Plant Leaf Diseases dataset (for illustration purposes, this may not give valuable results). This can be specified using the `pretrained_model_path` attribute in the `model:` subsection as shown in the YAML code below.
-
-```yaml
-training:
-   model:
-      name: mobilenet
-      version: v2
-      alpha: 0.35
-      input_shape: (224, 224, 3)
-      pretrained_model_path: ../pretrained_models/mobilenetv2/ST_pretrainedmodel_public_dataset/plant-village/mobilenet_v2_0.35_224_fft/mobilenet_v2_0.35_224_fft.h5
-```
-
-Weights are transferred between backbone layers (all layers but the classifier). The two models must have the same backbones, obviously. You could not transfer weights between two MobileNet-V2 models that have different 'alpha' parameter values, or from an FD-MobileNet model to a ResNet model.
-
-This weights transfer feature is available for all the models from the Model Zoo. Note that for MobileNet models, the `pretrained_weights` and `pretrained_model_path` attributes are mutually exclusive. If both are set, an error will be thrown.
-
-</details>
-
-<details open><summary><a href="#5-3-3">5.3.3 Freezing layers</a></summary><a id="5-3-3"></a>
+<details open><summary><a href="#5-3-2">5.3.2 Freezing layers</a></summary><a id="5-3-2"></a>
 
 Once the pretrained weights have been loaded in the model to train, some layers are often frozen, that is made non-trainable, before training the model. A commonly used approach is to freeze all the layers but the last one, which is the classifier.
 
-By default, all the layers are trainable. If you want to freeze some layers, then you need to add the optional `frozen_layers` attribute to the `training:` section of your configuration file. The indices of the layers to freeze are specified using the Python syntax for indexing into lists and arrays. Below are some examples.
+By default, all the layers are trainable. If you want to freeze some layers, then you need to add the optional `frozen_layers` attribute to the `training` section of your configuration file. The indices of the layers to freeze are specified using the Python syntax for indexing into lists and arrays. Below are some examples.
 
 ```yaml
 training:
@@ -445,50 +422,48 @@ Note that if you want to make it explicit that all the layers are trainable, you
 
 </details>
 
-<details open><summary><a href="#5-3-4">5.3.4 Multi-step training</a></summary><a id="5-3-4"></a>
+<details open><summary><a href="#5-3-3">5.3.3 Multi-step training</a></summary><a id="5-3-3"></a>
 
 In some cases, better results may be obtained using multiple training steps.
 
 The first training step is generally done with only a few trainable layers, typically the classifier only. Then, more and more layers are made trainable in the subsequent training steps. Some other parameters may also be adjusted from one step to another, in particular the learning rate. Therefore, a different configuration file is needed at each step.
 
-The `model_path` attribute of the `general:` section and the `trained_model_path` attribute of the `training:` section are available to implement such a multi-step training. At a given step, `model_path` is used to load the model that was trained at the previous step and `trained_model_path` is used to save the model at the end of the step.
+The `model_path` attribute of the `model` section is available to implement such a multi-step training. At a given step, `model_path` is used to load the model that was trained at the previous step.
 
 Assume for example that you are doing a 3 steps training. Then, your 3 configurations would look as shown below.
 
 **Training step #1 configuration file (initial training):**
 
 ```yaml
+
+model:
+   model_name: mobilenetv2_a035
+   input_shape: (128, 128, 3)
+   pretrained: True
+
 training:
-   model:
-      name: mobilenet
-      version: v2
-      alpha: 0.35
-      input_shape: (128, 128, 3)
-      pretrained_weights: imagenet
    frozen_layers: (0:-1)
-   trained_model_path: ${MODELS_DIR}/step_1.h5
+
 ```
 
 **Training step #2 configuration file:**
 
 ```yaml
-general:
-   model_path: ${MODELS_DIR}/step_1.h5
+model:
+   model_path: ${MODELS_DIR}/step_1.keras
 
 training:
    frozen_layers: (50:)
-   trained_model_path: ${MODELS_DIR}/step_2.h5
 ```
 
 **Training step #3 configuration file:**
 
 ```yaml
-general:
-   model_path: ${MODELS_DIR}/step_2.h5
+model:
+   model_path: ${MODELS_DIR}/step_2.keras
 
 training:
    frozen_layers: None
-   trained_model_path: ${MODELS_DIR}/step_3.h5
 ```
 
 </details>
@@ -499,59 +474,62 @@ training:
 
 You can create your own custom model and get it handled as any built-in Model Zoo model. If you want to do that, you need to modify a number of Python source code files that are all located under the */<MODEL-ZOO-ROOT>/image_classification/src* directory root.
 
-An example of a custom model is given in the **models/custom_model.py** located in the */<MODEL-ZOO-ROOT>/image_classification/src/models/*. The model is constructed in the body of the *get_custom_model()* function that returns the model. Modify this function to implement your own model.
+An example of a custom model is given in the **models/custom_model.py** located in the */<MODEL-ZOO-ROOT>/image_classification/tf/src/models/*. The model is constructed in the body of the *get_custom_model()* function that returns the model. Modify this function to implement your own model.
 
 In the provided example, the *get_custom_model()* function takes in arguments:
 - `num_classes`, the number of classes.
 - `input_shape`, the input shape of the model.
 - `dropout`, the dropout rate if a dropout layer must be included in the model.
 
-As you modify the *get_custom_model()* function, you can add your own arguments. Assume for example that you want to have an argument `alpha` that is a float. Then, just add it to the interface of the function.
+As you modify the *get_custom_model()* function, you can add your own arguments. Assume for example that you want to have an argument 'alpha' that is a float. First, add it to the interface of the *get_custom_model()* function. Then in */<MODEL-ZOO-ROOT>/image_classification/tf/wrappers/models/custom_models/custom_models.py* file, update TF_CUSTOM_MODEL_FNS dictionnary definition with 'alpha' and its value like this: 
+
+```yaml
+TF_CUSTOM_MODEL_FNS = {
+    # Key: model name, Value: (wrapper function, dict of static kwargs)
+    'custom_model':         (get_custom_model, {'alpha': 0.25}),
+    'st_efficientnetlcv1':  (get_st_efficientnetlcv1, {}),
+    'st_fdmobilenetv1':     (get_st_fdmobilenetv1,    {}),
+    'st_mnistv1':           (get_st_mnistv1,     {}),
+}
+```
 
 Then, your custom model can be used as any other Model Zoo model using the configuration file as shown in the YAML code below:
 
 ```yaml
+model:
+   model_name: custom_model
+   input_shape: (128, 128, 3)
+
 training:
-   model:
-      name: custom
-      alpha: 0.5       # The argument you added to get_custom_model().
-      input_shape: (128, 128, 3)
    dropout: 0.2
 ```
-
-If you want to use transfer learning with your custom model, you need to modify the value of the argument `last_layer_index` in the call to the function `transfer_pretrained_weights()` in the file *common/utils/models_utils.py*. This argument needs to be set to the index of the last layer of the model backbone, i.e., the last layer before the classifier begins. Layer indices are numbered from 0 (the input layer has index 0).
-
-After doing this, you will be able to use transfer learning as shown below:
-
-```yaml
-training:
-   model:
-      name: custom
-      alpha: 0.5
-      input_shape: (128, 128, 3)
-      pretrained_model_path: ${MODELS}/pretrained_model.h5
-   dropout: 0.2
-```
-
 </details>
 
 <details open><summary><a href="#5-5">5.5 Train, quantize, benchmark, and evaluate your model</a></summary><a id="5-5"></a>
 
-In case you want to train and quantize a model, you can either launch the training operation mode followed by the quantization operation on the trained model (please refer to the quantization **[README.md](./README_QUANTIZATION.md)** that describes in detail the quantization part) or you can use chained services like launching [chain_tqe](../src/config_file_examples/chain_tqe_config.yaml) example with the command below:
+In case you want to train and quantize a model, you can either launch the training operation mode followed by the quantization operation on the trained model (please refer to the quantization **[README.md](./README_QUANTIZATION.md)** that describes in detail the quantization part) or you can use chained services like launching [chain_tqe](../config_file_examples/chain_tqe_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_tqe_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_tqe_config.yaml
 ```
 
-This specific example trains a MobileNet V2 model with ImageNet pre-trained weights, fine-tunes it by retraining the latest seven layers but the fifth one (this only as an example), and quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model.
+In this specific example, the following operations are sequentially performed: 
+- load a EfficientNet V2 B0 model with imagenet pre-trained weights 
+- perform a full fine-tuning on tf_flowers dataset 
+- quantize to 8-bits with onnx quantizer and with `quantization_split` (30% in this example) of the train dataset for calibration 
+- evaluate the quantized model
 
-In case you also want to execute a benchmark on top of training and quantizing services, it is recommended to launch the chain service called [chain_tqeb](../src/config_file_examples/chain_tqeb_config.yaml) that stands for train, quantize, evaluate, benchmark like the example with the command below:
+In case you also want to execute a benchmark on top of training and quantizing services, it is recommended to launch the chain service called [chain_tqeb](../config_file_examples/chain_tqeb_config.yaml) that stands for train, quantize, evaluate, benchmark like the example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_tqeb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_tqeb_config.yaml
 ```
-
-This specific example uses the "Bring Your Own Model" feature using `model_path`, then it fine tunes the initial model by retraining all the layers but the twenty first (as an example), benchmarks the float model on the STM32H747I-DISCO board using the STM32Cube.AI developer cloud, quantizes it to 8-bits using quantization_split (30% in this example) of the train dataset for calibration before evaluating the quantized model and benchmarking it.
+In this specific example, the following operations are sequentially performed: 
+- load a ResNet50 V2 model with imagenet pre-trained weights 
+- perform a full fine-tuning on tf_flowers dataset 
+- quantize to 8-bits with tflite quantizer and with `quantization_split` (30% in this example) of the train dataset for calibration 
+- evaluate the quantized model
+- benchmark it on the STM32H747I-DISCO board using the STEdgeAI Developer Cloud
 
 </details>
 </ul>

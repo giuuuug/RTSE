@@ -1,6 +1,7 @@
 # Semantic Segmentation STM32 Model Zoo
 
-Remember that minimalistic YAML files are available [here](../src/config_file_examples/) to play with specific services, and that all pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with their configuration .yaml file used to generate them. These are very good starting points to start playing with!
+
+Minimalistic YAML template files are available [here](../config_file_examples/) for each service. All pre-trained models in the [STM32 model zoo](https://github.com/STMicroelectronics/stm32ai-modelzoo/) are provided with the configuration YAML file used to generate them. These templates are excellent starting points and can be adapted to your own datasets and models.
 
 ## Table of Contents
 
@@ -8,10 +9,11 @@ Remember that minimalistic YAML files are available [here](../src/config_file_ex
 2. [Semantic Segmentation Tutorial](#2)
    - [2.1 Choose the operation mode](#2-1)
    - [2.2 Global settings](#2-2)
-   - [2.3 Dataset specification](#2-3)
-   - [2.4 Apply image preprocessing](#2-4)
-   - [2.5 Use data augmentation](#2-5)
-   - [2.6 Set the training parameters](#2-6)
+   - [2.3 Model section](#2-3)
+   - [2.4 Dataset specification](#2-4)
+   - [2.5 Apply image preprocessing](#2-5)
+   - [2.6 Use data augmentation](#2-6)
+   - [2.7 Set the training parameters](#2-7)
    - [2.7 Model quantization](#2-7)
    - [2.8 Benchmark the model](#2-8)
    - [2.9 Deploy the model](#2-9)
@@ -26,13 +28,20 @@ Remember that minimalistic YAML files are available [here](../src/config_file_ex
 
 <details open><summary><a href="#1"><b>1. Semantic segmentation Model Zoo introduction</b></a></summary><a id="1"></a>
 
-The semantic segmentation model zoo provides a collection of independent services and pre-built chained services that can be used to perform various functions related to machine learning for semantic segmentation. The individual services include tasks such as training the model or quantizing the model, while the chained services combine multiple services to perform more complex functions, such as training the model, quantizing it, and evaluating the quantized model successively.
+
+The semantic segmentation model zoo provides a collection of independent services and pre-built chained services for machine learning workflows in semantic segmentation. Individual services include tasks such as training, quantization, evaluation, benchmarking, and deployment. Chained services combine multiple steps, such as training, quantizing, and then evaluating or benchmarking the quantized model in sequence.
+
 
 To use the services in the semantic segmentation model zoo, you can utilize the model zoo [stm32ai_main.py](../stm32ai_main.py) along with the [../user_config.yaml](../user_config.yaml) file as input. The YAML file specifies the service or the chained services and a set of configuration parameters such as the model (either from the model zoo or your own custom model), the dataset, the number of epochs, and the preprocessing parameters, among others.
 
 More information about the different services and their configuration options can be found in the <a href="#2">next section</a>.
 
-To date, the only dataset structure supported is the PASCAL VOC. It means that each set can be specified by 3 parameters: the path to a directory containing the JPEG images, a second path to a directory containing the masks in .png, and finally a path to a .txt file containing the names of the JPEG images to be considered in the JPEG images directory for a given set. More details are given later in this README.
+
+The model zoo supports generic dataset structures. For each set (training, validation, test), specify:
+   - the path to a directory containing the images
+   - the path to a directory containing the segmentation masks
+   - the path to a text file listing the image filenames to use for that set
+This flexible structure allows you to use any dataset, not just PASCAL VOC. More details are provided in the sections below.
 
 </details>
 <details open><summary><a href="#2"><b>2. Semantic segmentation tutorial</b></a></summary><a id="2"></a>
@@ -87,8 +96,6 @@ general:
    project_name: segmentation        # Project name. Optional, defaults to "<unnamed>".
    logs_dir: logs                    # Name of the directory where log files are saved. Optional, defaults to "logs".
    saved_models_dir: saved_models    # Name of the directory where model files are saved. Optional, defaults to "saved_models".
-   model_path: <file-path>           # Optional: Path to a model file.
-   model_type: deeplab_v3            # The only supported so far, mandatory.
    global_seed: 123                  # Seed used to seed random generators (an integer). Optional, defaults to 123.
    deterministic_ops: False          # Enable/disable deterministic operations (a boolean). Optional, defaults to False.
    display_figures: True             # Enable/disable the display of figures (training learning curves, display overlay images). Optional, defaults to True.
@@ -103,10 +110,38 @@ Even when random generators are seeded, it is often difficult to exactly reprodu
 The `gpu_memory_limit` attribute sets an upper limit in GBytes on the amount of GPU memory Tensorflow may use. This is an optional attribute with no default value. If it is not present, memory usage is unlimited. 
 If you have several GPUs, be aware that the limit is only set on logical gpu[0]. 
 
-The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .h5 or .onnx models. 
+The `num_threads_tflite` parameter is only used as an input parameter for the tflite interpreter. Therefore, it has no effect on .keras or .onnx models. 
 This parameter may accelerate the tflite model evaluation in the following operation modes: `evaluation` (if a .tflite is specified in `model_path`), `chain_tqeb`, `chain_eqe`, `chain_tqe` and `chain_eqeb` (if the quantizer is the TFlite_converter). 
 However, the acceleration depends on your system resources.
 
+</details></ul>
+
+<ul><details open><summary><a href="#2-3">2.3 Model section</a></summary><a id="2-3"></a>
+
+The `model` section defines all parameters related to the model architecture and selection for training, evaluation, or prediction.
+
+In this tutorial, we consider the training of DeepLabV3 (with ASPPV2 head) as defined in [models](../tf/src/models/deeplabv3.py). It uses a MobileNetV2 backbone, pre-trained on the ImageNet dataset (1.4M images, 1000 classes). As an example, we use MobileNetV2 with alpha = 0.5. To do so, configure the model section in [user_config.yaml](../user_config.yaml) as follows:
+
+```yaml
+model:
+  model_type: deeplab
+  model_name: st_deeplabv3_mnv2_a050_s16_asppv2
+  input_shape: (320, 320, 3)
+  # model_path: ./path/to/your_model.keras
+  # pretrained_weights: True
+```
+
+
+**Parameters:**
+
+If you are using an operation mode that involves training, you can use the `model_path` attribute to train your own custom model instead of using a model from the Model Zoo. If you do not want to use the `model_name` parameter, you can directly specify the path to your model with `model_path`.
+This is explained in detail in the [readme](./README_TRAINING.md) file for the training service. However, in this tutorial, the `model_path` parameter is not used since we are using a pre-trained model from the Model Zoo.
+
+- `model_type` is mandatory for any operation mode which includes training. So far the only topology supported is `deeplab`.
+- `model_name`: The name of the registered model you want to use. Available options are:
+   - `st_deeplabv3_mnv2_a050_s16_asppv2`
+   - `st_deeplabv3_rn50v1_s16_asppv2`
+- `input_shape`: The expected input dimensions for the model, typically in the format `(height, width, channels)`.
 The `model_path` attribute is utilized to indicate the path to the model file that you wish to use for the selected operation mode. The accepted formats for `model_path` are listed in the table below:
 
 | Operation mode | `model_path` |
@@ -117,10 +152,27 @@ The `model_path` attribute is utilized to indicate the path to the model file th
 | 'benchmarking' | Keras, TF-Lite or ONNX model file |
 | 'deployment', 'chain_qd'   | TF-Lite model file |
 
-If you are using an operation mode that involves training, you can use the `model_path` attribute to train your own custom model instead of using a model from the Model Zoo. 
-This is explained in detail in the [readme](./README_TRAINING.md) file for the train service. However, in this tutorial, the `model_path` attribute is not used since we are using a pre-trained model from the Model Zoo.
+- `pretrained_weights`: Set to `True` to use ImageNet pretrained weights (for MobileNetV2 backbone).
 
-To finish, setting the `model_type` is mandatory for any operation mode which includes training. So far the only topology supported is `deeplab_v3`.
+**Registered Models:**
+- The following models are currently registered and available for direct selection:
+   - `st_deeplabv3_mnv2_a050_s16_asppv2`
+   - `st_deeplabv3_rn50v1_s16_asppv2`
+
+- You can also register your own custom models by following the instructions in the wrapper code (`tf/wrappers/models/custom_models/models.py`).
+
+**Registered Model Name Format Explanation:**
+
+Registered model names encode key architectural parameters. For example:
+
+- `st_deeplabv3_rn50v1_s16_asppv2`
+   - `st_deeplabv3`: Model architecture (DeepLabV3, ST variant)
+   - `rn50v1`: Backbone (ResNet-50, version 1)
+   - `s16`: Output stride (16)
+   - `asppv2`: ASPP version 2
+
+Each part of the name helps you identify the model’s backbone, configuration, and special features.
+
 
 </details></ul>
 <ul><details open><summary><a href="#2-3">2.3 Dataset specification</a></summary><a id="2-3"></a>
@@ -129,28 +181,26 @@ The `dataset` section and its attributes are shown in the YAML code below.
 
 ```yaml
 dataset:
-  name: pascal_voc
-  class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-                "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-                "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"]
-  training_path: ./datasets/VOC2012_train_val/JPEGImages                                 # Path to train JPEG images
-  training_masks_path: ./datasets/VOC2012_train_val/SegmentationClassAug                 # Path to train masks files
-  training_files_path: ./datasets/VOC2012_train_val/ImageSets/Segmentation/trainaug.txt  # Path to file listing the images names for training
-  validation_path: ./datasets/VOC2012_train_val/JPEGImages
-  validation_masks_path: ./datasets/VOC2012_train_val/SegmentationClassAug
-  validation_files_path: ./datasets/VOC2012_train_val/ImageSets/Segmentation/val.txt     # Path to file listing the images names for validation
-  validation_split: 
-  test_path: ./datasets/VOC2012_test/JPEGImages                                          # Path to test JPEG images
-  test_masks_path: ./datasets/VOC2012_test/SegmentationMasks                             # Path to test masks files
-  test_files_path: ./datasets/VOC2012_test/ImageSets/Segmentation/test.txt               # Path to file listing the images names for test
-  quantization_path:        # Optional: path to quantization JPEG images
-  quantization_masks_path:  # Optional: path to quantization masks images
-  quantization_files_path:  # Optional: path to file listing the images names for quantization
+  dataset_name: person_coco_2017_pascal_voc_2012
+  class_names:
+  - background
+  - person
+  training_path: ./datasets/person_COCO2017_VOC2012/JPEGImages
+  training_masks_path: ./datasets/person_COCO2017_VOC2012/SegmentationClassAug
+  training_files_path: ./datasets/person_COCO2017_VOC2012/ImageSets/Segmentation/trainaug.txt
+  validation_path: ./datasets/person_COCO2017_VOC2012/JPEGImages
+  validation_masks_path: ./datasets/person_COCO2017_VOC2012/SegmentationClassAug
+  validation_files_path: ./datasets/person_COCO2017_VOC2012/ImageSets/Segmentation/val.txt
+  quantization_split: 0.02
+  test_path:                                 # Path to test JPEG images
+  test_masks_path:                         # Path to test masks files
+  test_files_path:             # Path to file listing the 
   quantization_split: 0.003 # Quantization split ratio.
+  prediction_path: ./datasets/VOC2012_predict/JPEGImages                                 # Path to prediction JPEG images (for prediction mode)
   seed: 123 # Random generator seed used when splitting a dataset.
 ```
 
-The `name` attribute is mandatory. To date, a unique value is accepted: `pascal_voc`. This parameter is used in the data_loader in order to correctly construct each dataset expecting [PASCAL VOC 2012](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/) structure. In the future, it could be extended to other dataset types.
+The `dataset_name` should be set to `person_coco_2017_pascal_voc_2012` or `coco_2017_pascal_voc_2012`. This parameter is used in the data_loader in order to correctly construct each dataset expecting [PASCAL VOC 2012](http://host.robots.ox.ac.uk/pascal/VOC/voc2012/) structure. In the future, it could be extended to other dataset types.
 
 
 To adhere to the PASCAL VOC 2012 structure, we need to establish three paths for each set. This setup will automatically retrieve the specified images from the training path's JPEG images directory and the corresponding masks from the training masks path.
@@ -163,7 +213,7 @@ the validation set. The `seed` attribute specifies the seed value to use for ran
 The 3 quantization path attributes are used to specify a dataset for the quantization process. If these attributes are not provided and a training set is available, the training set is used for the quantization. 
 However, training sets can be quite large and the quantization process can take a long time to run. To avoid this issue, you can set the `quantization_split` attribute to use only a random portion of the dataset for quantization.
 
-**Please follow the [PASCAL VOC 2012 tutorial](../datasets/pascal_voc_2012/README.md) to have more training masks (about 10,582) and a `trainaug.txt` file containing the IDs of the new training masks. Or, the [COCO 2017 PASCAL VOC 2012 tutorial](../datasets/coco_2017_pascal_voc_2012/README.md) to create COCO 2017 + PASCAL VOC 2012 dataset, and the [n_class_coco_2017_pascal_voc_2012 tutorial](../datasets/n_class_coco_2017_pascal_voc_2012/README.md) to create the indoor_pascal_voc, outdoor_pascal_voc, person_pascal_voc dataset.**
+**Please follow the [PASCAL VOC 2012 tutorial](../datasets/pascal_voc_2012/README.md) to have more training masks (about 10,582) and a `trainaug.txt` file containing the IDs of the new training masks. Or, the [COCO 2017 PASCAL VOC 2012 tutorial](../datasets/coco_2017_pascal_voc_2012/README.md) to create COCO 2017 + PASCAL VOC 2012 dataset, and the [n_class_coco_2017_pascal_voc_2012 tutorial](../datasets/n_class_coco_2017_pascal_voc_2012/README.md) to create the person_coco_2017_pascal_voc_2012 dataset.**
 
 </details></ul>
 <ul><details open><summary><a href="#2-4">2.4 Apply image preprocessing</a></summary><a id="2-4"></a>
@@ -211,11 +261,6 @@ data_augmentation:
   random_contrast:
     factor: 0.4
     change_rate: 1.0
-  random_gaussian_noise:
-    stddev: (0.0001, 0.005)
-  random_jpeg_quality:
-    jpeg_quality: (60, 100)
-    change_rate: 0.025
   random_posterize:
     bits: (4, 8)
     change_rate: 0.025
@@ -233,20 +278,8 @@ Please refer to [the data augmentation documentation](./README_DATA_AUGMENTATION
 
 A 'training' section is required in all the operation modes that include training, namely 'training', 'chain_tqeb' and 'chain_tqe'.
 
-In this tutorial, we consider the training of deeplab_v3 (with ASPP head) as defined in [models](../src/models/deeplabv3.py). It uses a MobileNet V2 model as backbone, pre-trained on the ImageNet dataset, a large dataset consisting of 1.4M images and 1000 classes. 
-As an example, we will use a MobileNet V2 with alpha = 0.5. To do so, we will need to configure the model section in [user_config.yaml](../user_config.yaml) as follows:
-
 ```yaml
 training:
-   model:
-      name: mobilenet               # Or, resnet50                
-      version: v2                   # v1 only for resnet50
-      alpha: 0.5
-      aspp : v2                     # or v1
-      output_stride: 16             # or 8
-      input_shape: (512, 512, 3)
-      pretrained_weights: imagenet
-      pretrained_model_path:
    batch_size: 64
    epochs: 150
    dropout: 0.3          # Insert a dropout layer in the model and set rate to 0.3
@@ -269,36 +302,22 @@ training:
          patience: 60
 ```
 
-
-Certainly! Here is the updated README section with the concise explanation of ASPP versions included in the model specification details:
-
----
-
-The `model` subsection is used to specify a model that is available with the Model Zoo:
-- The `name` and `input_shape` attributes must always be present. The `name` specifies the topology used as backbone for the considered `model_type`.
-- Additional attributes are needed depending on the type of model. For example, an `alpha` and `version` attribute is required for a MobileNet model, and `version` for ResNet50. 
-- The `aspp` attribute specifies the version of the ASPP module to use. Options are :
-   - v1: Uses standard atrous convolutions to capture multi-scale context.
-   - v2: Uses depthwise separable atrous convolutions, which reduce the number of parameters and computational cost, making the model more hardware-friendly and efficient.
-- The optional `pretrained_weights` attribute can be used to load pretrained weights in the model before it gets trained. By default, no pretrained weights are loaded.
-
 The `batch_size` and `epochs` attributes are mandatory.
 
 The `dropout` attribute is optional. By default, no dropout layer is inserted in the model.
 
 All the Keras optimizers are supported. If you are not passing any argument to the optimizer, you may write it on one line. For example: "optimizer: Adam".
 
-The optional `frozen_layers` attribute is used to make some layers of the model non-trainable. Together with the `pretrained_weights` attribute of the `model` subsection, 
+The optional `frozen_layers` attribute is used to make some layers of the model non-trainable. Together with the `pretrained_weights` attribute of the `model` section, 
 it is useful when a transfer learning approach is used to train the model or in case we decide to fine-tune only a specified subset of layers. 
-Another attribute of the `model` subsection called `pretrained_weights` is also available to load the weights from another model (not shown in the YAML code above). 
 
 The `callbacks` subsection is optional. All the Keras callbacks are supported. Note that several callbacks are built-in and cannot be redefined, including ModelCheckpoint, TensorBoard, and CSVLogger. 
 
 A variety of learning rate schedulers are provided with the Model Zoo. If you want to use one of them, just include it in the `callbacks` subsection. Refer to the training service [README](./README_TRAINING.md) for a description 
 of the available callbacks and learning rate plotting utility.
 
-The best model obtained at the end of the training is saved in the 'experiments_outputs/\<date-and-time\>/saved_models' directory and is called 'best_model.h5' (see section <a href="#4">visualize the chained services results</a>). 
-Make sure not to use the 'best_augmentation_model.h5' file as it includes the rescaling and data augmentation layers
+The best model obtained at the end of the training is saved in the 'experiments_outputs/\<date-and-time\>/saved_models' directory and is called 'best_model.keras' (see section <a href="#4">visualize the chained services results</a>). 
+Make sure not to use the 'best_augmentation_model.keras' file as it includes the rescaling and data augmentation layers
 
 </details></ul>
 <ul><details open><summary><a href="#2-7">2.7 Model quantization</a></summary><a id="2-7"></a>
@@ -315,7 +334,8 @@ quantization:
    granularity: per_tensor             # Optional, defaults to "per_channel".
    optimize: True                      # Optional, defaults to False. Only used when granularity is per_tensor and quantizer is TFlite_converter
    #target_opset: 17                   # Optional, defaults to 17 for onnx_quantizer.
-   #extra_options: calib_moving_average         # Optional, defaults to None for onnx_quantizer.
+   #onnx_extra_options:                # Optional, defaults to CalibMovingAverage set to False for onnx_quantizer.
+      #CalibMovingAverage: True
    export_dir: quantized_models                 # Optional, defaults to "quantized_models".
 ```
 
@@ -334,24 +354,24 @@ one unique (scale, offset) couple. The alternative is 'per tensor' quantization 
 It is obviously more challenging to preserve original float model accuracy using 'per tensor' quantization. But this method is particularly well suited to fully exploit STM32MP2 platforms HW design.
 
 Some topologies can be slightly optimized to become "per_tensor" quantization friendly. Therefore, we propose to optimize the model to improve the "per-tensor" quantization. 
-This is controlled by the `optimize` parameter. Only used when quantizing a (.h5) model using TFlite_converter.
+This is controlled by the `optimize` parameter. Only used when quantizing a (.keras) model using TFlite_converter.
 By default, it is False and no optimization is applied. When set to True, some modifications are applied on the original network. Please note that these optimizations only apply when granularity is "per_tensor". 
 To finish, some topologies cannot be optimized. So even if `optimize` is set to True, there is no guarantee that "per_tensor" quantization will preserve the float model accuracy for all the topologies.
 
 The `target_opset` is an integer parameter. This is only needed or accounted for when using `Onnx_quantizer` and is ignored when using `TFlite_converter`. Before doing the onnx quantization, the onnx opset of the model is updated to the target_opset. If no value is provided a default value of 17 is used.
 
-The `extra_options` expects `calib_moving_average` when using 'Onnx_quantizer', when it is set to True, the calibration process for quantizing the model will compute the moving average of the minimum and maximum values observed during the calibration phase. This helps in smoothing out fluctuations and providing a more stable calibration result. If set to False, the calibration will use the raw minimum and maximum values without averaging.
+The `onnx_extra_options` expects `CalibMovingAverage` set to True or False when using 'Onnx_quantizer'. When it is set to True, the calibration process for quantizing the model will compute the moving average of the minimum and maximum values observed during the calibration phase. This helps in smoothing out fluctuations and providing a more stable calibration result. If set to False, the calibration will use the raw minimum and maximum values without averaging.
 
 By default, the quantized model is saved in the 'quantized_models' directory under the 'experiments_outputs' directory. You may use the optional `export_dir` attribute to change the name of this directory.
 
 </details></ul>
 <ul><details open><summary><a href="#2-8">2.8 Benchmark the model</a></summary><a id="2-8"></a>
 
-The [STM32Cube.AI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target devices. 
-To use this feature, set the `on_cloud` attribute to True. Alternatively, you can use [STM32Cube.AI](https://www.st.com/en/embedded-software/x-cube-ai.html) to benchmark your model and estimate its footprints 
+The [STEdgeAI Developer Cloud](https://stedgeai-dc.st.com/home) allows you to benchmark your model and estimate its footprints and inference time for different STM32 target devices. 
+To use this feature, set the `on_cloud` attribute to True. Alternatively, you can use [STEdgeAI Core](https://www.st.com/en/development-tools/stedgeai-core.html) to benchmark your model and estimate its footprints 
 for STM32 target devices locally. To do this, make sure to add the path to the `stedgeai` executable under the `path_to_stedgeai` attribute and set the `on_cloud` attribute to False.
 
-The `version` attribute specifies the **STM32Cube.AI** version used to benchmark the model, e.g., 10.0.0, and the `optimization` defines the optimization used to generate the C model, options: "balanced", "time", "ram".
+The `optimization` defines the optimization used to generate the C model, options: "balanced", "time", "ram".
 
 The `board` attribute is used to provide the name of the STM32 board to benchmark the model on. 
 The available boards are 'STM32N6570-DK', 'STM32H747I-DISCO', 'STM32H7B3I-DK', 'STM32F469I-DISCO', 'B-U585I-IOT02A', 'STM32L4R9I-DISCO', 'NUCLEO-H743ZI2', 'STM32H747I-DISCO', 'STM32H735G-DK', 'STM32F769I-DISCO', 'NUCLEO-G474RE', 'NUCLEO-F401RE' and 'STM32F746G-DISCO'.
@@ -360,7 +380,6 @@ However, for segmentation models, we clearly recommend choosing an MPU platform 
 ```yaml
 tools:
    stedgeai:
-      version: 10.0.0
       optimization: balanced
       on_cloud: True
       path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
@@ -375,49 +394,7 @@ The `path_to_cubeIDE` attribute is for the [deployment](./README_DEPLOYMENT_STM3
 <ul><details open><summary><a href="#2-9">2.9 Deploy the model</a></summary><a id="2-9"></a>
 
 In this tutorial, we are using the `chain_tqeb` toolchain, which does not include the deployment service. 
-However, if you want to deploy the model after running the chain, you can do so by referring to the [README](./README_DEPLOYMENT_MPU.md) and modifying the `deployment_mpu_config.yaml` or file `deployment_n6_config.yaml`,
-or by setting the `operation_mode` to `deploy` and modifying the `user_config.yaml` file as described below:
-
-```yaml
-general:
-   model_path: <path-to-a-TFlite-model-file>     # Path to the model file to deploy
-
-dataset:
-   class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-                "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-                "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"] 
-
-tools:
-   stedgeai:
-      version: 10.0.0
-      optimization: balanced
-      on_cloud: True
-      path_to_stedgeai: C:/ST/STEdgeAI/<x.y>/Utilities/windows/stedgeai.exe
-   path_to_cubeIDE: C:/ST/STM32CubeIDE_<*.*.*>/STM32CubeIDE/stm32cubeide.exe
-
-deployment:
-  c_project_path: ../application_code/semantic_segmentation/STM32MP-LINUX/
-  IDE: GCC
-  verbosity: 1
-  hardware_setup:
-    serie: STM32MP2
-    board: STM32MP257F-EV1
-    input: CAMERA_INTERFACE_DCMI
-    output: DISPLAY_INTERFACE_USB
-```
-
-In the `general` section, users must provide the path to the TFlite model file that they want to deploy using the `model_path` attribute.
-
-The `dataset` section requires users to provide the names of the classes using the `class_names` attribute.
-
-The `tools` section includes information about the **stedgeai** toolchain, such as the version, optimization level, and path to the `stedgeai.exe` file.
-
-Finally, in the `deployment` section, users must provide information about the hardware setup, such as the series and board of the STM32 device, as well as the input and output interfaces. 
-Once all of these sections have been filled in, users can run the deployment service to deploy their model to the STM32 device.
-
-Please refer to the readme below for a complete deployment tutorial:
-- on N6-NPU: [README_STM32N6.md](./README_DEPLOYMENT_STM32N6.md)
-- on MPU: [README_MPU.md](./README_DEPLOYMENT_MPU.md)
+However, if you want to deploy the model after running the chain, you can do so by referring to the [README_MPU.md](./README_DEPLOYMENT_MPU.md) and modifying the `deployment_mpu_config.yaml` or,  [README_STM32N6.md](./README_DEPLOYMENT_STM32N6.md) with the file `deployment_n6_config.yaml`.
 
 </details></ul>
 <ul><details open><summary><a href="#2-10">2.10 Hydra and MLflow settings</a></summary><a id="2-10"></a>
@@ -427,20 +404,20 @@ The `mlflow` and `hydra` sections must always be present in the YAML configurati
 ```yaml
 hydra:
    run:
-      dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+      dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 The `mlflow` section is used to specify the location and name of the directory where MLflow files are saved, as shown below:
 
 ```yaml
 mlflow:
-   uri: ./src/experiments_outputs/mlruns
+   uri: ./tf/src/experiments_outputs/mlruns
 ```
 </details></ul>
 </details>
 <details open><summary><a href="#3"><b>3. Run the semantic segmentation chained service</b></a></summary><a id="3"></a>
 
-After updating the [user_config.yaml](../user_config.yaml) file, please run the following command:
+After updating the [user_config.yaml](../user_config.yaml) file, please run the following code block:
 
 ```bash
 python stm32ai_main.py
@@ -481,28 +458,28 @@ This is illustrated in the figure below.
       |                                   |                                |            |
  saved_models                      quantized_models                       logs        .hydra
       |                                   |                                |            |
-      +--- best_augmented_model.h5        +--- quantized_model.h5     TensorBoard     Hydra
-      +--- last_augmented_model.h5        +--- optimized_model.h5        files        files
-      +--- best_model.h5
+best_augmented_model.keras        quantized_model.tflite              TensorBoard      Hydra
+last_augmented_model.keras        optimized_model.tflite                 files         files
+best_model.keras
 ```
-The optimized_model.h5 is only issued if quantization `granularity` is 'per_tensor' and `optimize` is set to True.
+The optimized_model.keras is only issued if quantization `granularity` is 'per_tensor' and `optimize` is set to True.
 
 The file named 'stm32ai_main.log' under each experiment directory is the log file saved during the execution of the 'stm32ai_main.py' script. 
 The contents of the other files saved under an experiment directory are described in the table below.
 
 |  File             |  Directory | Contents               |
 |:-------------------|:-------------------------|:-----------------------|
-| best_augmented_model.h5 | saved_models | Best model saved during training, rescaling and data augmentation layers included (Keras) |
-| last_augmented_model.h5 | saved_models | Last model saved at the end of training, rescaling and data augmentation layers included (Keras) |
-| best_model.h5           | saved_models | Best model obtained at the end of training (Keras) |
+| best_augmented_model.keras | saved_models | Best model saved during training, rescaling and data augmentation layers included (Keras) |
+| last_augmented_model.keras | saved_models | Last model saved at the end of training, rescaling and data augmentation layers included (Keras) |
+| best_model.keras           | saved_models | Best model obtained at the end of training (Keras) |
 | quantized_model.tflite  | quantized_models | Quantized model (TFlite) |
-| optimized_model.h5      | quantized_models | Optimized model if 'per_tensor' quantization |
+| optimized_model.keras      | quantized_models | Optimized model if 'per_tensor' quantization |
 | training_metrics.csv    | metrics | Training metrics CSV including epochs, losses, accuracies and learning rate |
 | training_curves.png     | metrics | Training learning curves (losses and accuracies) |
 
 
 All the directory names, including the naming pattern of experiment directories, can be changed using the configuration file. The names of the files cannot be changed.
-The models in the 'best_augmented_model.h5' and 'last_augmented_model.h5' Keras files contain rescaling and data augmentation layers. 
+The models in the 'best_augmented_model.keras' and 'last_augmented_model.keras' Keras files contain rescaling and data augmentation layers. 
 These files can be used to resume training that you interrupted or that crashed. This will be explained in the training service [README](./README_TRAINING.md). These model files are not intended to be used outside of the Model Zoo context.
 
 <ul><details open><summary><a href="#4-1">4.1 Saved results</a></summary><a id="4-1"></a>
@@ -706,20 +683,14 @@ You can specify lists on a single line or on multiple lines as shown below.
 This syntax:
 
 ```yaml
-class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
-              "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
-              "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"]
+class_names: ["background", "person"]
 ```
 is equivalent to this one:
 
 ```yaml
 class_names:
 - background
-- aeroplane
-- bicycle
-- bird
-- boat
-- ...
+- person
 ```
 
 **Multiple attribute-value pairs on one line:**
@@ -738,4 +709,3 @@ rescaling:
    scale: 1/127.5
    offset: -1
 ```
-</details>

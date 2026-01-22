@@ -4,7 +4,7 @@ With ST Model Zoo, you can easily define and train your own TensorFlow neural ne
 
 ## Define my model
 
-First, create your own model in /src/models/custom_model.py for it to be automatically used with the model zoo training script.
+First, create your own model in tf/src/models/custom_model.py for it to be automatically used with the model zoo training script.
 Open the python file and copy your model topology inside, here is the default example model:
 
 ```python
@@ -13,17 +13,17 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 def get_custom_model(num_classes: int = None, input_shape: Tuple[int, int, int] = None,
-                     dropout: Optional[float] = None) -> tf.keras.Model:
+              dropout: Optional[float] = None, **kwargs) -> tf.keras.Model:
     """
-    Creates a custom image classification model with the given number of classes and input shape.
-
+    Creates a custom audio classification model with the given number of classes and input shape.
+    Edit this function to define your custom model.
     Args:
         num_classes (int): Number of classes in the classification task.
-        input_shape (Tuple[int, int, int]): Shape of the input image.
+        input_shape (Tuple[int, int, int]): Shape of the input spectrogram
         dropout (Optional[float]): Dropout rate to be applied to the model.
 
     Returns:
-        keras.Model: Custom image classification model.
+        keras.Model: Custom classification model.
     """
     # Define the input layer
     inputs = tf.keras.Input(shape=input_shape)
@@ -46,14 +46,12 @@ def get_custom_model(num_classes: int = None, input_shape: Tuple[int, int, int] 
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     if dropout:
         x = tf.keras.layers.Dropout(dropout)(x)
-    if num_classes > 2:
-        outputs = tf.keras.layers.Dense(num_classes, activation="softmax")(x)
-    else:
-        outputs = tf.keras.layers.Dense(1, activation="sigmoid")(x)
+    outputs = tf.keras.layers.Dense(num_classes, activation="softmax")(x)
 
     # Define and return the model
     model = tf.keras.Model(inputs=inputs, outputs=outputs, name="custom_model")
     return model
+
 
 ```
 The model must be created inside the function get_custom_model. The input size and number of classes are then define in the user_config.yaml. See below.
@@ -80,7 +78,7 @@ For any details regarding the parameters of the config file, you can look here:
 - [Main README](../README_OVERVIEW.md)
 
 
-### Yaml Configuration example:
+### YAML configuration example:
 
 In the example below, we use the training operation mode and our custom model. 
 For simpler operation modes, you can delete the unneeded parts if you want. 
@@ -106,8 +104,13 @@ general:
 
 operation_mode: training
 
+model: 
+  model_name: custom
+  input_shape: (64, 96, 1)
+  dropout: 0
+
 dataset:
-  name: esc10
+  dataset_name: esc10
   class_names: ['dog', 'chainsaw', 'crackling_fire', 'helicopter', 'rain', 'crying_baby', 'clock_tick', 'sneezing', 'rooster', 'sea_waves']
   file_extension: '.wav'
   training_audio_path: ./datasets/ESC-50/audio # Mandatory
@@ -159,7 +162,6 @@ feature_extraction:
   norm: None
   htk : True
   to_db : False
-  include_last_patch: False
 
 # Optional 
 data_augmentation:
@@ -179,10 +181,6 @@ data_augmentation:
     mask_value : 0
 
 training:
-  model: # Use it if you want to use a model from the zoo, mutually exclusive with 'general.model_path'
-    name: custom
-    input_shape: (64, 96, 1)
-  dropout: 0
   batch_size: 16
   epochs: 50 
   optimizer:
@@ -202,15 +200,15 @@ training:
       patience: 60
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
   
 ```
 
-You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/src/config_file_examples)
+You can look at user_config.yaml examples for any operation mode [here](https://github.com/STMicroelectronics/stm32ai-modelzoo-services/tree/main/audio_event_detection/config_file_examples).
 
 ## Run the script:
 

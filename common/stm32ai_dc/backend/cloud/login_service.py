@@ -124,7 +124,7 @@ class LoginService:
 
         # Find POST URL
         form_action = html.unescape(
-            re.search('<form\s+.*?\s+action="(.*?)"', page, re.DOTALL).group(1))
+            re.search(r'<form\s+.*?\s+action="(.*?)"', page, re.DOTALL).group(1))
 
         # Find LT value. This is required by my.st.com in order to perform login
         html_lt_group = re.search('(<input.*?name="lt".*?/>)', page).group(1)

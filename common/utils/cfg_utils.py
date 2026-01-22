@@ -15,6 +15,8 @@ from pathlib import Path
 import re
 import numpy as np
 import requests
+from hydra.core.hydra_config import HydraConfig
+
 
 aspect_ratio_dict = {"fit": "ASPECT_RATIO_FIT",
                      "crop": "ASPECT_RATIO_CROP",
@@ -26,7 +28,7 @@ color_mode_n6_dict = {"rgb": "COLOR_RGB",
                       
 
 
-def _download_file(url:str, local_path:str):
+def download_file(url:str, local_path:str):
     """
     Downloads a file from the given URL and saves it to the specified local path.
     args:
@@ -155,7 +157,7 @@ def expand_env_vars(string: str) -> str:
     returns:
         string (str): The original string with expanded variables.
     '''
-    for match in re.findall('\$\{\w+\}', string):
+    for match in re.findall(r'\$\{\w+\}', string):
         var_name = match[2:-1]
         # Get the variable value, throw an error if it is not set.
         var_value = os.environ.get(var_name)
@@ -258,6 +260,47 @@ def check_config_attributes(cfg: DictConfig,
             raise ValueError(f"\nMissing one or more attributes from {specs.one_or_more}{message}")
 
 
+def check_model_file_extension(ml_path, mode, mode_groups, field_name):
+    """
+    Validates the file extension and existence of a model file path according to the current operation mode.
+
+    Args:
+        ml_path (str): Path to the model file to check.
+        mode (str): The current operation mode (e.g., 'training', 'quantization', etc.).
+        mode_groups (Any): An object with attributes for each mode group, each being a list of mode names.
+        field_name (str): The name of the config field being checked (for error messages).
+
+    Raises:
+        ValueError: If the file extension is not allowed for the current mode, or if the path is not provided.
+        FileNotFoundError: If the file does not exist at the given path.
+    """
+    m1 = f"\nExpecting `{field_name}` attribute to be set to a path to "
+    m2 = "\nPlease check the 'model' section of your configuration file."
+    if not ml_path:
+        raise ValueError(m1 + "a valid file path" + m2)
+    file_extension = Path(ml_path).suffix.lower()
+    if mode in mode_groups.training:
+        allowed = [".h5", ".keras"]
+        if file_extension not in allowed:
+            raise ValueError(m1 + ", ".join(allowed) + m2)
+    elif mode in mode_groups.quantization:
+        allowed = [".h5", ".keras", ".onnx"]
+        if file_extension not in allowed:
+            raise ValueError(m1 + ", ".join(allowed) + m2)
+    elif mode in ("evaluation", "prediction"):
+        allowed = [".h5", ".keras", ".tflite", ".onnx"]
+        if file_extension not in allowed:
+            raise ValueError(m1 + ", ".join(allowed) + m2)
+    elif mode in ("benchmarking", "deployment"):
+        allowed = [".h5", ".keras", ".tflite", ".onnx"]
+        if file_extension not in allowed:
+            raise ValueError(m1 + ", ".join(allowed) + m2)
+    if not os.path.isfile(ml_path):
+        raise FileNotFoundError(
+            f"\nUnable to find file {ml_path}\nPlease check the '{field_name}' attribute in your configuration file"
+        )
+        
+
 def parse_tools_section(cfg: DictConfig, 
                         operation_mode: str,
                         hardware_type: str ="MCU") -> None:
@@ -268,45 +311,38 @@ def parse_tools_section(cfg: DictConfig,
         operation_mode (str): service or operation mode used
         hardware_type (str): type of hardware targetted
     '''
+#    if cfg is not None:
     required = []
-    if hardware_type == "MCU":
+    if hardware_type == "MCU" and not operation_mode == "evaluation" and not operation_mode == "prediction":
         required += ["path_to_cubeIDE",]
-    legal = ["stm32ai", "stedgeai", "path_to_cubeIDE"]
-    one_or_more = ["stm32ai", "stedgeai"]
-    check_config_attributes(cfg, specs={"legal": legal, "all": required, "one_or_more": one_or_more}, section="tools")
+    
+    if cfg.stedgeai:
+        legal = ["stedgeai", "path_to_cubeIDE"]
+        check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="tools")
 
-    if cfg.stm32ai:
-        # Legacy stm32ai usage
-        legal = ["version", "optimization", "on_cloud", "path_to_stm32ai"]
-        check_config_attributes(cfg.stm32ai, 
-                                specs={"legal": legal, "all": legal}, section="tools.stm32ai")
-        if not cfg.stm32ai.on_cloud:
-            if not os.path.isfile(cfg.stm32ai.path_to_stm32ai):
-                raise ValueError("Path for `stm32ai.exe` does not exist.\n"
-                                "Please check the cfg.tools.stm32ai section!")
-    else:
         # stedgeai usage
-        legal = ["version", "optimization", "on_cloud", "path_to_stedgeai"]
+        legal = ["optimization", "on_cloud", "path_to_stedgeai"]
         check_config_attributes(cfg.stedgeai, 
-                                specs={"legal": legal, "all": legal}, section="tools.stedgeai")
+                                specs={"legal": legal, "all": []}, section="tools.stedgeai")
         if not cfg.stedgeai.on_cloud:
             if not os.path.isfile(cfg.stedgeai.path_to_stedgeai):
                 print(cfg.stedgeai.path_to_stedgeai)
                 raise ValueError("Path for `stedgeai.exe` does not exist.\n"
                                 "Please check the cfg.tools.stedgeai section!")
+        
         # Patch to support stedgeai with legacy naming stm32ai : reconstruct stm32ai dictionnary
         # from stedgeai one
         cfg["stm32ai"] = cfg.stedgeai
-        cfg.stm32ai["version"] = cfg.stedgeai.version
-        cfg.stm32ai["optimization"] = cfg.stedgeai.optimization
-        cfg.stm32ai["on_cloud"] = cfg.stedgeai.on_cloud
-        cfg.stm32ai["path_to_stm32ai"] = cfg.stedgeai.path_to_stedgeai
-    
+        cfg.stm32ai["optimization"] = cfg.stedgeai.optimization if cfg.stedgeai.optimization else "balanced"
+        cfg.stm32ai["on_cloud"] = cfg.stedgeai.on_cloud # if cfg.stedgeai.on_cloud else True
+        cfg.stm32ai["path_to_stm32ai"] = cfg.stedgeai.path_to_stedgeai if cfg.stedgeai.path_to_stedgeai else None
+        cfg.stm32ai["version"] = Path(cfg.stedgeai.path_to_stedgeai).parts[-4]
+        cfg.stedgeai["version"] = Path(cfg.stedgeai.path_to_stedgeai).parts[-4]
     # Path to cubeIDE only needed for MCU in deployment service
     if hardware_type == "MCU":
         if operation_mode == "deployment" and not os.path.isfile(cfg.path_to_cubeIDE):
             raise ValueError("Path for `path_to_cubeIDE` does not exist.\n"
-                             "Please check the cfg.tools section!")
+                            "Please check the cfg.tools section!")
 
 
 def parse_benchmarking_section(cfg: DictConfig) -> None:
@@ -327,7 +363,9 @@ def parse_quantization_section(cfg: DictConfig,
         cfg (DictConfig): 'quantization' section of the configuration file
         legal (List): UC specific usable attributes
     '''
-    required = [x for x in legal if x not in ["export_dir", "granularity", "optimize", "target_opset", "extra_options", "op_types_to_quantize"]]
+    required = [x for x in legal if x not in ["export_dir", "granularity", "optimize", "target_opset", "operating_mode",
+                                              "onnx_quant_parameters", "op_types_to_quantize", "onnx_extra_options",
+                                              "iterative_quant_parameters"]]
     check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="quantization")
 
     # Set default values of missing optional arguments
@@ -337,6 +375,7 @@ def parse_quantization_section(cfg: DictConfig,
         cfg.granularity = "per_channel"
     cfg.optimize = cfg.optimize if cfg.optimize is not None else False
     cfg.target_opset = cfg.target_opset if cfg.target_opset is not None else 17
+    cfg.operating_mode = cfg.operating_mode if cfg.operating_mode else 'default'
 
     # Check the quantizer name
     if cfg.quantizer.lower() not in ["tflite_converter", "onnx_quantizer"]:
@@ -357,17 +396,13 @@ def parse_quantization_section(cfg: DictConfig,
 
     if not isinstance(cfg.target_opset, int):
         raise ValueError(f"\nUnknown or unsupported target_opset value. Received `{cfg.optimize}`\n"
-                         "Supported target_opset parameters: 'int' upto latest onnx_opset\n"
+                         "Supported target_opset parameters: 'int' up to latest onnx_opset\n"
                          "Please check the 'quantization.target_opset' attribute in your configuration file.")
     # Check the quantizer type
     if cfg.quantization_type.lower() not in ["ptq"]:
         raise ValueError(f"\nUnknown or unsupported quantization type. Received `{cfg.quantization_type}`\n"
                          "Supported type: PTQ\n"
                          "Please check the 'quantization.quantization_type' attribute in your configuration file.")
-    if cfg.extra_options not in ["calib_moving_average", None]:
-        raise ValueError(f"\nUnknown or unsupported extra option. Received `{cfg.extra_option}`\n"
-                         "Supported extra option: calib_moving_average\n"
-                         "Please check the 'quantization.extra_options' attribute in your configuration file.")
 
 
 def parse_evaluation_section(cfg: DictConfig, 
@@ -412,26 +447,35 @@ def parse_top_level(cfg: DictConfig,
         mode_choices (List): currently supported modes
         legal (List): UC specific usable attributes
     '''
+
     # Check that operation_mode is present and has a value
     message = "\nPlease check the top-level of your configuration file."
     if "operation_mode" not in cfg:
         raise ValueError("\nMissing `operation_mode` attribute\n"
-                         "Supported modes: {mode_choices}{message}")
+                         f"Supported modes: {mode_choices}{message}")
     if cfg.operation_mode is None:
         raise ValueError("\nExpecting a value for `operation_mode` attribute\n"
-                         "Supported modes: {mode_choices}{message}")
+                         f"Supported modes: {mode_choices}{message}")
+    # [KH]: to be added when all use cases have model section]
+    # # Check that the model section is present and has a value
+    # if "model" not in cfg:
+    #     raise ValueError("\nMissing `model` section at the top level of your configuration file.\n"
+    #                      f"Please check your configuration file.{message}")
+    # if cfg.model is None:
+    #     raise ValueError("\nExpecting a value for `model` section at the top level of your configuration file.\n"
+    #                      f"Please check your configuration file.{message}")
 
-    # Check that the value of operation_mode is valid
+    # Check that the value of operation_mode is valid 
     mode = cfg.operation_mode
     if mode not in mode_choices:
         raise ValueError(f"\nUnknown value for `operation_mode` attribute. Received {mode}\n"
                          f"Supported modes: {mode_choices}{message}")
 
     # Attributes usable at the top level
-    required = ["mlflow"]
-    if mode not in mode_groups.training:
-        # We need the 'general' section to provide model_path.
-        required += ["general",]
+    required = ["mlflow"]    # [KH]: should include model later] #, "model"]
+#    if mode not in mode_groups.training:
+#        # We need the 'general' section to provide model_path.
+#        required += ["general",]
     if mode != "benchmarking":
         # Need the preprocessing & feature extraction sections (when available)
         required += ["preprocessing"]
@@ -443,12 +487,14 @@ def parse_top_level(cfg: DictConfig,
         required += ["training",]
     if mode in mode_groups.quantization:
         required += ["quantization",]
-    if mode == "prediction":
-        required += ["prediction",]
+#    if mode == "prediction":
+#        required += ["prediction",]
     if mode in mode_groups.benchmarking:
         required += ["benchmarking", "tools"]
     if mode in mode_groups.deployment:
         required += ["deployment", "tools"]
+    if mode in mode_groups.compression:
+        required += ["compression", "training"]     # Needed as fine tuning is part of the compression feature
 
     check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="top_level")
 
@@ -469,9 +515,9 @@ def parse_general_section(cfg: DictConfig,
         required (List): UC specific required attributes
         output_dir (str): output directory for the current run
     '''
-    # Usage of the model_path attribute in training modes
-    # is checked when parsing the 'training' section.
-    required.append("model_path") if not mode_groups.training else []
+#    # Usage of the model_path attribute in training modes
+#    # is checked when parsing the 'training' section.
+#    required.append("model_path") if not mode_groups.training else []
     check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="general")
 
     # Set default values of missing optional attributes
@@ -488,46 +534,7 @@ def parse_general_section(cfg: DictConfig,
 
     if not cfg.num_threads_tflite:
         cfg.num_threads_tflite = 1
-    ml_path = cfg.model_path
-    if ml_path and ml_path[:4].lower() == "http":
-        print('[INFO] : A URL found for general.model_path variable!')
-        # Example usage
-        url = cfg.model_path
-        model_dir = os.path.join(output_dir, 'pretrained_model')
-        os.makedirs(model_dir, exist_ok=True)
-        local_path = os.path.join(model_dir, url.split('/')[-1])
-        _download_file(url, local_path)
-        cfg.model_path = local_path
-        ml_path=local_path
-    
-    file_extension = Path(ml_path).suffix if ml_path else ""
-    m1 = "\nExpecting `model_path` to be set to a path to a "
-    m2 = f" model file when running '{mode}' operation mode\n"
-    if ml_path:
-        m2 += f"Received path: {ml_path}\n"
-    m2 += "Please check the 'general' section of your configuration file."
-
-    if mode in mode_groups.training:
-        if ml_path and file_extension != ".h5":
-            raise ValueError(m1 + ".h5" + m2)
-    elif mode in mode_groups.quantization:
-        if not ml_path or file_extension not in [".h5", ".onnx"]:
-            raise ValueError(m1 + ".h5 or .onnx" + m2)
-    elif mode in ("evaluation", "prediction"):
-        if not ml_path or file_extension not in (".h5", ".tflite", ".onnx"):
-            raise ValueError(m1 + ".h5, .tflite or .onnx" + m2)
-    elif mode in ("benchmarking"):
-        if not ml_path or file_extension not in (".h5", ".tflite", ".onnx"):
-            raise ValueError(m1 + ".h5, .tflite or .onnx" + m2)
-    elif mode in ("deployment"):
-        if not ml_path or file_extension not in (".h5", ".tflite", ".onnx"):
-            raise ValueError(m1 + ".h5, .tflite or .onnx" + m2)
-
-    # If model_path is set, check that the model file exists.
-    if ml_path and not os.path.isfile(ml_path):
-        raise FileNotFoundError(f"\nUnable to find file {ml_path}\n"
-                                "Please check the \'general.model_path\'"
-                                "attribute in your configuration file.")
+        
 
 
 def parse_random_periodic_resizing(cfg, output_stride):
@@ -563,86 +570,141 @@ def parse_random_periodic_resizing(cfg, output_stride):
 
     # Check that the image sizes are compatible with the network stride.
     for size in random_sizes:
-        if (size[0] % output_stride != 0) or (size[1] % output_stride != 0):
-            raise ValueError(
-                f"Image sizes must be multiples of the network stride.\n"
-                f"Network stride: {output_stride}\n"
-                f"Invalid image size: {size}\n"
-                f"{message}")
+        if np.shape(output_stride)==():
+            output_strides = [output_stride]
+        else:
+            output_strides = output_stride
+        for os in output_strides:
+            if (size[0] % os != 0) or (size[1] % os != 0):
+                raise ValueError(
+                    f"Image sizes must be multiples of the network stride.\n"
+                    f"Network stride: {os}\n"
+                    f"Invalid image size: {size}\n"
+                    f"{message}")
 
-    return random_sizes
+    return random_sizes.tolist()
     
-                
+
+def parse_compression_section(cfg: DictConfig, 
+                               legal: List) -> None:
+    '''
+    parses the dictionary containing entire configuration file
+    args:
+        cfg (DictConfig): 'compression' section of the configuration file
+        legal (List): UC specific usable attributes
+    '''
+    required = [x for x in legal if x not in ["factor", "strong_optimization"]]
+    check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="compression")
+
+    # Set default values of missing optional arguments
+    cfg.factor = cfg.factor if cfg.factor else 0.5
+    cfg.strong_optimization = cfg.strong_optimization if cfg.strong_optimization else False
+
+    # Check the compression factor type
+    if not isinstance(cfg.factor, float):
+        raise ValueError(f"\nUnknown or unsupported factor value. Received `{cfg.factor}`\n"
+                         "Supported factor parameters: 'float'\n"
+                         "Please check the 'compression.factor' attribute in your configuration file.")
+
+    # Check optimization
+    if cfg.strong_optimization not in [True, False]:
+        raise ValueError(f"\nUnknown or unsupported strong_optimization value. Received `{cfg.strong_optimization}`\n"
+                         "Supported optimize parameters: 'True', or 'False'\n"
+                         "Please check the 'compression.strong_optimization' attribute in your configuration file.")
+
+
 def parse_training_section(cfg: DictConfig, 
-                           model_path_used: bool = None, 
-                           model_type_used: bool = None,
                            legal: List = None) -> None:
     '''
     parses the training section of configuration file.
     args:
         cfg (DictConfig): 'training' section of the configuration file
-        model_path_used (bool): a flag to tell if the 'general.model_path' parameter is provided
-        model_type_used (bool): a flag to tell if the 'general.model_type' parameter is provided
+        model_path_used (bool): a flag to tell if the 'model.model_path' parameter is provided
+        model_type_used (bool): a flag to tell if the 'model.model_type' parameter is provided
         legal (List): usable attributes
     '''
     required = ["batch_size", "epochs", "optimizer"]
     check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="training")
-
-    # Check that there is one and only one model source
-    count = 0
-    if cfg.model: count += 1
-    if cfg.resume_training_from: count += 1
-    if model_path_used: count += 1
-    if count == 0:
-        raise ValueError("\nExpecting either `training.model`, `training.resume_training_from` or "
-                         "`general.model_path` attribute\nPlease check your configuration file.")
-    if count > 1:
-        raise ValueError("\nThe `training.model`, `training.resume_training_from` and `general.model_path` "
-                         "attributes are mutually exclusive.\nPlease check your configuration file.")
-
-    if cfg.model:
-        required = ["input_shape"]
-        required.append("name") if not model_type_used else []
-        check_config_attributes(cfg.model, specs={"all": required}, section="training.model")
-
-    # If resume_training_from is set, check that the model file exists
-    if cfg.resume_training_from:
-        path = cfg.resume_training_from
-        if os.path.isdir(path):
-            e=0
-        else:
-            if Path(path).suffix != ".h5":
-                raise ValueError("\nExpecting `resume_training_from` attribute to be set to a path to a .h5 model path\n"
-                                 f"Received path: {path}\n"
-                                 "Please check the 'training' section of your configuration file.")
-            if not os.path.isfile(path):
-                raise FileNotFoundError(f"\nUnable to find file {path}\nPlease check the 'training.resume_training_from'"
-                                        "attribute in your configuration file")
 
     # The optimizer may be written on one line. For example: "optimizer: Adam"
     # In this case, we got a string instead of a dictionary.
     if type(cfg.optimizer) == str:
         cfg.optimizer = DefaultMunch.fromDict({cfg.optimizer: None})
 
+def parse_model_section(cfg: DictConfig, mode: str, mode_groups, legal: list, required: list = None) -> None:
+    """
+    Checks and parses the root-level 'model' section of the config file.
 
+    Args:
+        cfg (DictConfig): The model configuration parameters.
+        mode (str): The current operation mode.
+        mode_groups: The mode groups object.
+        legal (list): List of legal model attributes for this use case.
+        required (list, optional): List of required model attributes. If None, no required fields are enforced.
+
+    Returns:
+        None
+    """
+    req = [] if required is None else list(required)
+    if cfg.model_name:
+        req.append("input_shape")
+    # Mutually exclusive model sources
+    model_sources = ["model_name", "model_path"]
+    set_sources = [name for name in model_sources if getattr(cfg, name, None)]
+    if len(set_sources) == 0:
+        raise ValueError(
+            "\nExpecting one of the following model source attributes to be set: "
+            f"{', '.join(model_sources)}\nPlease check your configuration file." )
+
+
+    check_config_attributes(cfg, specs={"legal": legal, "all": req}, section="model")
+
+    if cfg.model_path and cfg.model_path[:4].lower() == "http":
+        print('[INFO] : A URL found for model.model_path variable!')
+        url = cfg.model_path
+        output_dir = HydraConfig.get().runtime.output_dir
+        model_dir = os.path.join(output_dir, os.path.splitext(os.path.basename(cfg.model_path))[0])
+        os.makedirs(model_dir, exist_ok=True)
+        local_path = os.path.join(model_dir, url.split('/')[-1])
+        download_file(url, local_path)
+        cfg.model_path = local_path
+
+    # Check model_path
+    if cfg.model_path:
+        file_extension = Path(cfg.model_path).suffix.lower()
+        if file_extension in [".h5", ".keras", ".tflite"]:
+            cfg.framework = "tf"
+            check_model_file_extension(cfg.model_path, mode, mode_groups, "model_path")
+        elif file_extension in [".pt", ".pth"]:
+            cfg.framework = "torch"
+        elif file_extension in [".onnx"] and not cfg.framework:
+            cfg.framework = "tf"
+            check_model_file_extension(cfg.model_path, mode, mode_groups, "model_path")
+    else:
+        # Get end of model name to set the framework to be used"
+        if cfg.model_name[-3:]=='_pt':
+            cfg.framework = "torch"
+        else:
+            cfg.framework = "tf"
+                
+    if cfg.framework == "tf":
+        if len(set_sources) > 1:
+            raise ValueError(
+                "\nThe following model source attributes are mutually exclusive and more than one is set: "
+                f"{', '.join(set_sources)}\nPlease check your configuration file.")
+
+        
 def parse_prediction_section(cfg: DictConfig) -> None:
     '''
     parses the prediction section of configuration file.
     args:
         cfg (DictConfig): 'prediction' section of the configuration file
     '''
-
-    legal = ["test_files_path", "seed","target", 
+    legal = ["seed","target", "reid_distance_metric",
              "profile", "input_type", "output_type", "input_chpos", "output_chpos"]
-    required = ["test_files_path"]
+    required = []
     check_config_attributes(cfg, specs={"legal": legal, "all": required}, section="prediction")
 
-    # Check that the directory that contains the prediction tests files exist
-    if not os.path.isdir(cfg.test_files_path):
-        raise FileNotFoundError("\nUnable to find the directory containing the test files to predict\n"
-                                f"Received path: {cfg.test_files_path}\nPlease check the "
-                                "'prediction.test_files_path' attribute in your configuration file.")
-    
     # Set default values of missing optional arguments
     if not cfg.profile:
         cfg.profile = "profile_O3"
@@ -712,4 +774,29 @@ def get_class_names_from_file(cfg: DictConfig) -> List[str]:
             class_names = [line.strip() for line in file]
     return class_names
 
+from omegaconf import DictConfig, OmegaConf
 
+def flatten_config(cfg, preserve_keys=("class_map",)):
+    # Ensure cfg is a plain dict first
+    if isinstance(cfg, DictConfig):
+        cfg = OmegaConf.to_container(cfg, resolve=False)
+    elif "DefaultMunch" in str(type(cfg)):
+        cfg = cfg.toDict()
+    else:
+        cfg = dict(cfg)
+
+    preserve_keys = set(preserve_keys)
+    flat_config = {}
+
+    def _flatten(d):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                if k in preserve_keys:
+                    flat_config[k] = v
+                else:
+                    _flatten(v)
+            else:
+                flat_config[k] = v 
+
+    _flatten(cfg)
+    return flat_config

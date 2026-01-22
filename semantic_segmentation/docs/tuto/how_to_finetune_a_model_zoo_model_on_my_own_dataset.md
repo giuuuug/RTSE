@@ -43,7 +43,6 @@ The most important parts here are to define:
 
 general:
   project_name: segmentation
-  model_type : deeplab_v3
   saved_models_dir: saved_models
   gpu_memory_limit: 12
   global_seed: 127
@@ -51,8 +50,14 @@ general:
 
 operation_mode: training
 
+model:
+  model_type: deeplab
+  model_name: st_deeplabv3_mnv2_a050_s16_asppv2
+  input_shape: (416, 416, 3)
+  # model_path: ./path/to/your_model.keras
+
 dataset:
-  name: pascal_voc
+  dataset_name: person_coco_2017_pascal_voc_2012
   class_names: ["background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
                 "car", "cat", "chair", "cow", "dining table", "dog", "horse", "motorbike",
                 "person", "potted plant", "sheep", "sofa", "train", "tv/monitor"]
@@ -76,30 +81,17 @@ preprocessing:
 
 # Optional
 data_augmentation:   
-  random_flip:
-    mode: horizontal_and_vertical
-  random_crop:
-    crop_center_x: (0.25, 0.75)
-    crop_center_y: (0.25, 0.75)
-    crop_width: (0.6, 0.9)
-    crop_height: (0.6, 0.9)
-    change_rate: 0.6
   random_contrast:
     factor: 0.4
+    change_rate: 1.0
+  random_posterize:
+    bits: (4, 8)
+    change_rate: 0.025
   random_brightness:
-    factor: 0.3
+    factor: 0.05
+    change_rate: 1.0
 
 training:
-  model: 
-    name: mobilenet # architecture of the model to train
-    version: v2 
-    alpha: 0.5
-    aspp: v2
-    output_stride: 16  # the only supported for now 
-    input_shape: (416, 416, 3)
-    pretrained_weights: imagenet
-  # all the parameters below are standard in machine learning, you can look for them in google
-  # they mostly depends on the topology of your model and will need a lot of testing
   dropout: 0.6
   batch_size: 16
   epochs: 300
@@ -120,17 +112,17 @@ training:
       patience: 60
 
 mlflow:
-  uri: ./src/experiments_outputs/mlruns
+  uri: ./tf/src/experiments_outputs/mlruns
 
 hydra:
   run:
-    dir: ./src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
+    dir: ./tf/src/experiments_outputs/${now:%Y_%m_%d_%H_%M_%S}
 ```
 
 For the Chain_tqe and Chain_tqeb operation modes, you need to edit the config file to add parts related to the quantization and benchmark.
 Look at the documentation linked above for more details.
 
-You can also find examples of user_config.yaml for any operation mode [here](../../src/config_file_examples)
+You can also find examples of user_config.yaml for any operation mode [here](../../config_file_examples)
 
 ## Run the script:
 

@@ -9,6 +9,6 @@ The STM32 model zoo includes several models for the human activity recognition (
 
 
 You can get footprints and performance information for each model following links below:
-- [IGN](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/ign/README.md)
-- [GMP](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/gmp/README.md)
+- [st_ign](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/st_ign/README.md)
+- [st_gmp](https://github.com/STMicroelectronics/stm32ai-modelzoo/blob/master/human_activity_recognition/st_gmp/README.md)
 

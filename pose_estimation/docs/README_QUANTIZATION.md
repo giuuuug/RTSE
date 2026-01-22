@@ -15,12 +15,15 @@ Information about the dataset you want to use for activations calibration is pro
 
 ```yaml
 dataset:
-  name: COCO_2017_pose
+  dataset_name: coco
   test_path:
-  quantization_path: ../datasets/COCO_2017_person
+  quantization_path: ../datasets/COCO_2017_person_pose
   quantization_split: 0.4
   seed: 0
 ```
+
+> [!IMPORTANT]
+> The `dataset_name` is mandatory and should always be set to 'coco' even if you dont use the COCO dataset
 
 In this example, the only provided path is the `quantization_path`. It could be the full training set or a specific set dedicated to activations calibration. The state machine below describes the rules to follow when handling dataset paths for quantization.
 <div align="center" style="width:50%; margin: auto;">
@@ -59,8 +62,8 @@ The `color_mode` attribute must be one of "*grayscale*", "*rgb*" or "*rgba*".
 `operation_mode` should be set to quantization and the `quantization` section should be filled as in the following example:
 
 ```yaml
-general:
-  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/Public_pretrainedmodel_custom_dataset/custom_dataset_person_17kpts/movenet_lightning_heatmaps_192/movenet_lightning_heatmaps_192.h5
+model:
+  model_path: ../../stm32ai-modelzoo/pose_estimation/movenet/ST_pretrainedmodel_custom_dataset/custom_coco_person_17kpts/st_movenet_lightning_a100_heatmaps_192/st_movenet_lightning_a100_heatmaps_192.keras
   model_type: heatmaps_spe
 quantization:
   quantizer: TFlite_converter
@@ -75,6 +78,7 @@ quantization:
 **where**:
 
 - `model_path` - *String*, specifies the path of the model to be quantized.
+- `model_type` - *String*, can be 'heatmaps_spe', 'spe', 'hand_spe', 'head_spe' or 'yolo_mpe'
 - `quantizer` - *String*, "TFlite_converter" or "onnx_quantizer" which will convert model trained weights from float to integer values. The quantized model will be saved in ONNX or TensorFlow Lite format.
 - `quantization_type` - *String*, only option is "PTQ", i.e. "Post-Training Quantization".
 - `quantization_input_type` - *String*, can be "int8", "uint8" or "float", represents the quantization type for the model input.
@@ -114,21 +118,21 @@ mlflow:
 To launch your model quantization using a real dataset, run the following command from the UC folder:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name quantization_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name quantization_config.yaml
 ```
 
 The quantized TFLite model can be found in the corresponding **experiments_outputs/** folder.
 
-In case you want to evaluate the accuracy of the quantized model, you can either launch the evaluation operation mode on the generated quantized model (please refer to the evaluation **[README.md](./README_EVALUATION.md)** that describes in detail how to proceed) or you can use chained services like launching [chain_eqe](../src/config_file_examples/chain_eqe_config.yaml) example with the command below:
+In case you want to evaluate the accuracy of the quantized model, you can either launch the evaluation operation mode on the generated quantized model (please refer to the evaluation **[README.md](./README_EVALUATION.md)** that describes in detail how to proceed) or you can use chained services like launching [chain_eqe](../config_file_examples/chain_eqe_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_eqe_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_eqe_config.yaml
 ```
 
-In case you want to evaluate your quantized model footprints, you can either launch the benchmark operation mode on the generated quantized model (please refer to the benchmarking **[README.md](./README_BENCHMARKING.md)** that describes in detail how to proceed) or you can use chained services like launching [chain_qb](../src/config_file_examples/chain_qb_config.yaml) example with the command below:
+In case you want to evaluate your quantized model footprints, you can either launch the benchmark operation mode on the generated quantized model (please refer to the benchmarking **[README.md](./README_BENCHMARKING.md)** that describes in detail how to proceed) or you can use chained services like launching [chain_qb](../config_file_examples/chain_qb_config.yaml) example with the command below:
 
 ```bash
-python stm32ai_main.py --config-path ./src/config_file_examples/ --config-name chain_qb_config.yaml
+python stm32ai_main.py --config-path ./config_file_examples/ --config-name chain_qb_config.yaml
 ```
 
 Chained services work whether you specify a quantization dataset or not (random quantization).
