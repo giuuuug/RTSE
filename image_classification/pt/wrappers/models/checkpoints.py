@@ -7,7 +7,7 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 import os
-CHECKPOINT_STORAGE_URL = "https://github.com/STMicroelectronics/stm32ai-modelzoo/tree/main/image_classification/torch_checkpoints/"
+CHECKPOINT_STORAGE_URL = "https://raw.githubusercontent.com/STMicroelectronics/stm32ai-modelzoo/main/image_classification/torch_checkpoints/"
 CURRENT_REPO_PATH = os.path.dirname(os.path.abspath(__file__))
 SERVICES_ROOT = os.path.abspath(os.path.join(CURRENT_REPO_PATH, '../../../..'))
 #CHECKPOINT_STORAGE_URL = os.path.join(os.path.dirname(SERVICES_ROOT), "stm32ai-modelzoo/image_classification/torch_checkpoints/")

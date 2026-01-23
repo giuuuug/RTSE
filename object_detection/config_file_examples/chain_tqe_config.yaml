@@ -16,11 +16,11 @@ dataset:
   dataset_name: coco
   format: tfs
   class_names: [person]
-  training_path: /local/data/od_validation_dataset_coco_person/
-  test_path: /local/data/od_validation_dataset_coco_person/
-  quantization_path: /local/data/od_validation_dataset_coco_person/
-  validation_path: /local/data/od_validation_dataset_coco_person/
-  quantization_split: 0.0005
+  training_path: ./datasets/od_coco_2017_person/train
+  validation_path: ./datasets/od_coco_2017_person/validation
+  test_path: ./datasets/od_coco_2017_person/test
+  quantization_path: ./datasets/od_coco_2017_person/quantization
+  quantization_split: 0.05
 
 preprocessing:
   rescaling:

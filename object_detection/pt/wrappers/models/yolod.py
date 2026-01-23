@@ -7,6 +7,7 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 from pathlib import Path
+from urllib.parse import urljoin
 from typing import Any
 from common.model_utils.torch_utils import load_pretrained_weights
 from common.registries.model_registry import MODEL_WRAPPER_REGISTRY
@@ -40,7 +41,7 @@ def load_checkpoint_od(model, cfg):
         if checkpoint_key not in model_checkpoints:
             print(f"No checkpoint found for {checkpoint_key}")
             return model
-        ckpt_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints[checkpoint_key])
+        ckpt_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints[checkpoint_key])
         model = load_pretrained_weights(model, str(ckpt_path))
         print(f"Loaded {model_name} pretrained on {pretrained_dataset}")
         return model

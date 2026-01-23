@@ -10,6 +10,7 @@ from common.model_utils.torch_utils import load_pretrained_weights
 from common.registries.model_registry import MODEL_WRAPPER_REGISTRY
 from common.model_utils.torch_utils import load_state_dict_partial
 from image_classification.pt.wrappers.models.checkpoints import CHECKPOINT_STORAGE_URL, MODEL_CHECKPOINTS
+from urllib.parse import urljoin
 
 NUM_IMAGENET_CLASSES = 1000
 
@@ -42,7 +43,7 @@ def load_checkpoint_ic(model, cfg):
         if checkpoint_key not in MODEL_CHECKPOINTS:
             print(f"No checkpoint found for {checkpoint_key}")
             return model
-        ckpt_path = Path(CHECKPOINT_STORAGE_URL, MODEL_CHECKPOINTS[checkpoint_key])
+        ckpt_path = urljoin(CHECKPOINT_STORAGE_URL + "/", MODEL_CHECKPOINTS[checkpoint_key])
         model = load_pretrained_weights(model, str(ckpt_path))
         print(f"Loaded {model_name} pretrained on {dataset}")
         return model

@@ -44,9 +44,9 @@ class STYOLOMilli():
         
         self.backbone = STResNetMilli(out_features=out_features)
         
-        if cfg.model.pretrained : 
-            ckpt = torch.load(Path(CHECKPOINT_STORAGE_URL, model_checkpoints["st_resnetmilli_actrelu_pt_datasetimagenet_res224"]), weights_only=False, map_location=torch.device(cfg.device))
-            self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
+        # if cfg.model.pretrained : 
+        #     ckpt = torch.load(Path(CHECKPOINT_STORAGE_URL, model_checkpoints["st_resnetmilli_actrelu_pt_datasetimagenet_res224"]), weights_only=False, map_location=torch.device(cfg.device))
+        #     self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
             
         self.neck = STResNetYOLOPAFPN(depth=depth, width=width, in_channels=in_channels, in_features=out_features, act=act, depthwise=depthwise)
         self.head = YOLODHead(self.cfg, num_classes, width=width, in_channels=in_channels, act=act, depthwise=depthwise)

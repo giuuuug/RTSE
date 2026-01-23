@@ -8,8 +8,8 @@ dataset:
   format: tfs
   dataset_name: coco
   class_names: [person]
-  test_path: /local/data/od_validation_dataset_coco_person/
-  validation_path: /local/data/od_validation_dataset_coco_person/
+  test_path: ./datasets/od_coco_2017_person/test
+  validation_path: ./datasets/od_coco_2017_person/validation
 
 
 preprocessing:

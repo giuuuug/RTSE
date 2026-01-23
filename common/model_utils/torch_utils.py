@@ -18,32 +18,67 @@ from common.utils import LOGGER
 from pathlib import Path
 from urllib.parse import urlparse
 
-def load_pretrained_weights(model, checkpoint_url, device='cpu'):
-    parsed = urlparse(checkpoint_url)
-    # Check if this is a URL (http/https)
-    if parsed.scheme in ("http", "https"):
-        pretrained_dict = load_state_dict_from_url(
-        checkpoint_url,
-        progress=True,
-        check_hash=True,
-        map_location=device,
-    )
-    else:
-        ckpt_path = Path(checkpoint_url)
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
-        pretrained_dict = torch.load(ckpt_path, map_location=device, weights_only=False)
+import requests
 
-    if isinstance(pretrained_dict, dict):
-        if "state_dict" in pretrained_dict:
-            pretrained_dict = pretrained_dict["state_dict"]
-        elif "model" in pretrained_dict:
-            pretrained_dict = pretrained_dict["model"]
-    
-    load_state_dict_partial(model, pretrained_dict)
-    print(f"Loaded weights from {checkpoint_url}")
+def load_pretrained_weights(model, checkpoint_url, device="cpu"):  
+    parsed = urlparse(checkpoint_url)
+
+    # Always load from a LOCAL file
+    if parsed.scheme in ("http", "https"):
+        local_path = _download_checkpoint(checkpoint_url)
+    else:
+        local_path = Path(checkpoint_url)
+        if not local_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found at {local_path}")
+
+    # Load checkpoint
+    pretrained = torch.load(
+        local_path,
+        map_location=device,
+        weights_only=False,
+    )
+
+    if isinstance(pretrained, dict):
+        if "state_dict" in pretrained:
+            pretrained = pretrained["state_dict"]
+        elif "model" in pretrained:
+            pretrained = pretrained["model"]
+
+    load_state_dict_partial(model, pretrained)
+
+    print(f"Loaded weights from {local_path}")
     return model
 
+
+def _download_checkpoint(url: str) -> Path:
+    cache_dir = Path.home() / ".cache" / "model_weights"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = Path(urlparse(url).path).name
+    dst = cache_dir / filename
+
+    if dst.exists():
+        return dst
+
+    print(f"Downloading checkpoint from {url}")
+
+    with requests.get(url, stream=True, allow_redirects=True) as r:
+        r.raise_for_status()
+
+        # Detect Git LFS pointer (safety check)
+        first_chunk = next(r.iter_content(chunk_size=512))
+        if b"git-lfs" in first_chunk:
+            raise RuntimeError(
+                "Downloaded a Git LFS pointer file, not actual weights.\n"
+                "Use Git LFS, GitHub Releases, or pre-download the checkpoint."
+            )
+
+        with open(dst, "wb") as f:
+            f.write(first_chunk)
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+    return dst
 
 def load_state_dict_partial(model, pretrained_dict):
     """

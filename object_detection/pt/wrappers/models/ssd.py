@@ -7,6 +7,7 @@
 #  * If no LICENSE file comes with this software, it is provided AS-IS.
 #  *--------------------------------------------------------------------------------------------*/
 import urllib.parse as urlparse
+from urllib.parse import urljoin
 from collections import namedtuple
 from typing import Any, Callable, Dict, Tuple
 
@@ -52,7 +53,7 @@ def load_checkpoint_od(model, cfg):
         if checkpoint_key not in model_checkpoints:
             print(f"No checkpoint found for {checkpoint_key}")
             return model
-        ckpt_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints[checkpoint_key])
+        ckpt_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints[checkpoint_key])
         model = load_pretrained_weights(model, str(ckpt_path))
         print(f"Loaded {model_name} pretrained on {dataset}")
         return model
@@ -93,7 +94,7 @@ def get_mb1_ssd(cfg):
     
     model = create_mobilenetv1_ssd(cfg.model.num_classes+1)
     if cfg.model.pretrained : 
-        base_net_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints['mobilenetv1_base'])
+        base_net_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints['mobilenetv1_base'])
         model.init_from_base_net(base_net_path)
         print(f"Init from base net for SSD {base_net_path}")
     config = MOBILENET_CONFIG()
@@ -112,7 +113,7 @@ def get_mb1_ssd_lite(cfg):
     
     model = create_mobilenetv1_ssd_lite(cfg.model.num_classes+1)
     if cfg.model.pretrained : 
-        base_net_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints['mobilenetv1_base'])
+        base_net_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints['mobilenetv1_base'])
         model.init_from_base_net(base_net_path)
         print(f"Init from base net for SSD {base_net_path}")
     config = MOBILENET_CONFIG()
@@ -130,7 +131,7 @@ def get_mb2_ssd(cfg):
     width_mult = getattr(cfg.model, "width_mult", 1.0)
     model = create_mobilenetv2_ssd(cfg.model.num_classes+1, width_mult)
     if cfg.model.pretrained : 
-        base_net_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints['mobilenetv2_base'])
+        base_net_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints['mobilenetv2_base'])
         model.init_from_base_net(base_net_path)
         print(f"Init from base net for SSD {base_net_path}")
     config = MOBILENET_CONFIG()
@@ -148,7 +149,7 @@ def get_mb2_ssd_lite(cfg):
     width_mult = getattr(cfg.model, "width_mult", 1.0)
     model = create_mobilenetv2_ssd_lite(cfg.model.num_classes+1, width_mult)
     if cfg.model.pretrained : 
-        base_net_path = Path(CHECKPOINT_STORAGE_URL, model_checkpoints['mobilenetv2_base'])
+        base_net_path = urljoin(CHECKPOINT_STORAGE_URL + "/", model_checkpoints['mobilenetv2_base'])
         model.init_from_base_net(base_net_path)
         print(f"Init from base net for SSD {base_net_path}")
     config = MOBILENET_CONFIG()

@@ -17,7 +17,7 @@ model:
 dataset:
   dataset_name: COCO_2017_person
   class_names: [person]
-  training_path: C:\Users\boutichk\datasets\od_validation_dataset_coco_person
+  training_path: ./datasets/od_coco_2017_person/train
   validation_split: 0.1
   prediction_path:
   quantization_path:

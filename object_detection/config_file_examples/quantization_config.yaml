@@ -8,7 +8,7 @@ dataset:
   format: tfs
   dataset_name: coco
   class_names: [ person ]
-  quantization_path: /local/data/od_validation_dataset_coco_person/
+  quantization_path: ./datasets/od_coco_2017_person/quantization
 
 preprocessing:
   rescaling: { scale: 1/127.5, offset: -1 }

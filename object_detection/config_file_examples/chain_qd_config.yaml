@@ -8,7 +8,7 @@ model:
 dataset:
   dataset_name: coco
   format: tfs
-  quantization_path: /local/data/od_validation_dataset_coco_person/
+  quantization_path: ./datasets/od_coco_2017_person/quantization
   class_names: [person]
 
 preprocessing:

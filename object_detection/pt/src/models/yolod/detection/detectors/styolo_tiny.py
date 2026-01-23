@@ -59,10 +59,10 @@ class STYOLOTiny():
         
         self.backbone = STResNetTiny(out_features=out_features)
         
-        if cfg.model.pretrained : 
-            ckpt = torch.load(Path(CHECKPOINT_STORAGE_URL, model_checkpoints["st_resnettiny_actrelu_pt_datasetimagenet_res224"]),weights_only=False, map_location=torch.device(cfg.device))
-            # sanity_check(self.backbone, ckpt)
-            self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
+        # if cfg.model.pretrained : 
+        #     ckpt = torch.load(Path(CHECKPOINT_STORAGE_URL, model_checkpoints["st_resnettiny_actrelu_pt_datasetimagenet_res224"]),weights_only=False, map_location=torch.device(cfg.device))
+        #     # sanity_check(self.backbone, ckpt)
+        #     self.backbone.load_state_dict(ckpt['state_dict'], strict=False)
         self.neck = STResNetYOLOPAFPN(depth=depth, width=width, in_channels=in_channels, in_features=out_features, act=act, depthwise=depthwise)
         self.head = YOLODHead(self.cfg, num_classes, width=width, in_channels=in_channels, act=act, depthwise=depthwise)
         self.model = YOLOD(self.backbone, self.neck, self.head)
