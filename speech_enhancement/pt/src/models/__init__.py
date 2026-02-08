@@ -9,3 +9,4 @@
 from .convlstm import ConvLSTMDenoiser
 from .stft_tcnn import STFTTCNN, DepthwiseSeparableConv
 from .custom import Custom
+from .erb_tcnn import ERB_TCNN

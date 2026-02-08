@@ -1,0 +1,91 @@
+general:
+  project_name: erb_tcnn
+  logs_dir: logs
+  saved_models_dir: saved_models
+  gpu_memory_limit: 0.9
+  display_figures: true
+operation_mode: chain_tqe
+model:
+  model_name: ERB_TCNN
+  state_dict_path: null
+  model_path: null
+model_specific:
+  n_blocks: 2
+  num_layers: 3
+  in_channels: 257
+  tcn_latent_dim: 256
+  init_dilation: 2
+  mask_activation: sigmoid
+  causal: false
+  n_fft: 512
+  n_bands: 64
+  subband_1: 64
+dataset:
+  dataset_name: valentini
+  root_folder: /home/mgiuliani/TESI/Datasets/voicebank_demand
+  n_speakers: 56
+  file_extension: .wav
+  num_training_samples: null
+  num_validation_samples: 500
+  num_test_samples: null
+  shuffle: true
+  random_seed: 42
+  clean_train_files_path: null
+  clean_test_files_path: null
+  noisy_train_files_path: null
+  noisy_test_files_path: null
+preprocessing:
+  pipeline_type: LibrosaSpecPipeline
+  peak_normalize: false
+  sample_rate: 16000
+  n_fft: 512
+  hop_length: 160
+  win_length: 320
+  window: hann
+  center: true
+  power: 1
+training:
+  device: cuda:0
+  epochs: 100
+  optimizer: Adam
+  optimizer_arguments:
+    lr: 0.001
+  loss: spec_hstl
+  batching_strategy: pad
+  num_dataloader_workers: 8
+  batch_size: 16
+  reference_metric: pesq
+  early_stopping: true
+  early_stopping_patience: 20
+  regularization:
+    weight_clipping_max: null
+    activation_regularization: null
+    act_reg_layer_types:
+    - Conv1d
+    - DepthwiseSeparableConv
+    act_reg_threshold: 50.0
+    penalty_type: l2
+  save_every: 10
+  snapshot_path: null
+  ckpt_path: ckpts/
+  logs_filename: training_logs.csv
+  opset_version: 17
+evaluation:
+  logs_path: eval_logs/
+  device: cuda:0
+  fixed_sequence_length: null
+quantization:
+  num_quantization_samples: 500
+  random_seed: 42
+  noisy_quantization_files_path: null
+  static_sequence_length: 40
+  static_axis_name: seq_len
+  granularity: per_channel
+  reduce_range: false
+  onnx_quant_parameters:
+    op_types_to_quantize: []
+    calibrate_method: MinMax
+  onnx_extra_options:
+    CalibMovingAverage: true
+mlflow:
+  uri: ./pt/src/experiment_outputs/mlruns

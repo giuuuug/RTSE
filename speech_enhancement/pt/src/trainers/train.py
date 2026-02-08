@@ -60,7 +60,7 @@ class SETrainerWrapper:
         if cfg.training.snapshot_path is None:
             snapshot_path = Path(cfg.output_dir, 'training_logs', 'training_snapshot.pth')
         else:
-            snapshot_path = cfg.training.snapshot_path
+            snapshot_path = Path(cfg.training.snapshot_path)
         
         # If snapshot file exists, it will be loaded automatically by the trainer
         # Log this to file

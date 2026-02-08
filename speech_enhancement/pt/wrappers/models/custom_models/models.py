@@ -12,11 +12,23 @@ def get_stfttcnn(cfg):
 def get_convlstm(cfg):
     return _get_model(cfg)
 
+@MODEL_WRAPPER_REGISTRY.register(framework="torch",model_name="custom", use_case='speech_enhancement')
+def get_custom(cfg):
+    return _get_model(cfg)
+
+@MODEL_WRAPPER_REGISTRY.register(framework="torch",model_name="erb_tcnn", use_case='speech_enhancement')
+def get_erb_tcnn(cfg):
+    return _get_model(cfg)
+
+@MODEL_WRAPPER_REGISTRY.register(framework="torch",model_name="erb_tcnn_complexmask", use_case='speech_enhancement')
+def get_erb_tcnn_complexmask(cfg):
+    return _get_model(cfg)
+
 def _get_model(cfg):
     # Note : model is sent to the appropriate device in the trainer/evaluator class and not here
     # Keep compatibility with the old config files by still accepting model.model_type
     model_type = cfg.model.model_name if cfg.model.model_name else cfg.model.model_type
-    model_specific_args = cfg.model_specific
+    model_specific_args = cfg.model_specific or {}
     model = getattr(speech_enhancement.pt.src.models, model_type)(**model_specific_args)
 
     log_to_file(cfg.output_dir, f"Model type: {model_type}")
@@ -32,7 +44,10 @@ def _get_model(cfg):
 
 PT_MODEL_FNS = {
     'stfttcnn': get_stfttcnn,
-    'convlstm': get_convlstm
+    'convlstm': get_convlstm,
+    'custom': get_custom,
+    'erb_tcnn': get_erb_tcnn,
+    'erb_tcnn_complexmask': get_erb_tcnn_complexmask
 }
 
 for model_name, wrapper_fn in PT_MODEL_FNS.items():

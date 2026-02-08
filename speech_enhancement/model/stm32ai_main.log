@@ -1,0 +1,17 @@
+operation_mode: chain_tqe
+Model type: ERB_TCNN
+Dataset: Valentini
+Float model evaluation on dataset valentini
+Float pesq : 2.8197611171065025
+Float stoi : 0.9380561202006771
+Float snr : 17.635464232812808
+Float sisnr : 17.55921653462845
+Float mse : 0.00012912595327490848
+[2026-02-08 15:09:08,213][onnxruntime.quantization.shape_inference][INFO] - Performing symbolic shape inference...
+Quantized model evaluation on dataset valentini
+Quantized quant_pesq : 2.6750715288143714
+Quantized quant_stoi : 0.9360057973696858
+Quantized quant_snr : 17.59627338896677
+Quantized quant_sisnr : 17.519127201686786
+Quantized quant_mse : 0.0001291208447551998
+operation finished: chain_tqe

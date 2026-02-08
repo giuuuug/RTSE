@@ -199,8 +199,25 @@ class MagSpecONNXEvaluator(BaseONNXEvaluator):
 
         # Convert noisy complex spectrogram to magnitude spectrogram
         noisy_frames_mag = np.abs(noisy_frames)
-        pred_weighted_mask = self.session.run(None, {self.net_input_nodes[0]:noisy_frames_mag})
-        pred_frames = noisy_frames * pred_weighted_mask
+        outputs = self.session.run(None, {self.net_input_nodes[0]:noisy_frames_mag})
+        pred_weighted_mask = outputs[0]
+        
+        # Squeeze extra dimensions (e.g. from ONNX export)
+        if pred_weighted_mask.ndim == 4 and pred_weighted_mask.shape[1] == 1:
+            pred_weighted_mask = np.squeeze(pred_weighted_mask, axis=1)
+        
+        # Handle Complex Mask (2*F channels)
+        if pred_weighted_mask.shape[1] == 2 * noisy_frames.shape[1]:
+            f = noisy_frames.shape[1]
+            mask_real = pred_weighted_mask[:, :f, :]
+            mask_imag = pred_weighted_mask[:, f:, :]
+            # Complex multiplication: (Ar + jAi) * (Mr + jMi)
+            # numpy handles multiplication of complex by complex if we provide it
+            complex_mask = mask_real + 1j * mask_imag
+            pred_frames = noisy_frames * complex_mask
+        else:
+            pred_frames = noisy_frames * pred_weighted_mask
+            
         pred_wave = librosa.istft(pred_frames, n_fft=self.n_fft, hop_length=self.hop_length,
                                     win_length=self.frame_length, window=self.window, center=self.center)
         # Squeeze waves

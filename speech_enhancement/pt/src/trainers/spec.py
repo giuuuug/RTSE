@@ -13,6 +13,8 @@
    (batch, 257, 20)
 '''
 
+
+from typing import Optional
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -90,8 +92,15 @@ class MagSpecTrainer(BaseTrainer):
         self.act_reg_layer_names = act_reg_layer_names
         self.act_reg_layer_types = act_reg_layer_types
         self.act_reg_threshold = act_reg_threshold
+        self.temporal_coherence_lambda = 0.05
+        self.temporal_coherence_p = 1 # 1=L1, 2=L2
+        self.temporal_coherence_highband_only = True
+        self.temporal_coherence_freq_hz = 2000.0
+        
+        allowed_temporal_coherence_p = [1, 2]
+        assert self.temporal_coherence_p in allowed_temporal_coherence_p, f"temporal_coherence_p must be one of {allowed_temporal_coherence_p}, was {self.temporal_coherence_p}"
 
-        allowed_losses = ["spec_mse", "wave_mse", "wave_snr", "wave_sisnr"]
+        allowed_losses = ["spec_mse", "wave_mse", "wave_snr", "wave_sisnr", "spec_hstl"]
         assert self.loss in allowed_losses, f"self.loss must be one of {allowed_losses}, was {self.loss}"
         
         self.batching_strat = batching_strat
@@ -108,7 +117,7 @@ class MagSpecTrainer(BaseTrainer):
         self.best_metric = np.inf if self.reference_metric in ["train_loss", "val_mse"] else -np.inf
         self.best_epoch = 0
         self.best_model_state_dict_path = Path(self.ckpt_path, "best_model_state_dict.pth")
-        if self.loss in ["spec_mse", "wave_mse"]:
+        if self.loss in ["spec_mse", "wave_mse", "spec_hstl"]:
             self.loss_function = nn.MSELoss(reduction="mean")
 
         elif self.loss == "wave_sisnr":
@@ -139,6 +148,11 @@ class MagSpecTrainer(BaseTrainer):
             self.ord = 2
         else:
             raise ValueError(f"penalty_type must be one of 'l1', 'l2', was {self.penalty_type}")
+        
+        if self.loss == "spec_hstl":
+            self.spec_hstl_eps = 1e-8
+        self._tc_highband_weight_cached: Optional[torch.Tensor] = None
+        
     def _run_train_epoch(self, epoch):
         print(f"========= EPOCH {epoch + 1} : training ============")
         epoch_loss = 0
@@ -171,6 +185,16 @@ class MagSpecTrainer(BaseTrainer):
         # Convert noisy complex spectrogram to magnitude spectrogram
         noisy_frames_mag = torch.abs(noisy_frames)
         pred_weighted_mask = self.model(noisy_frames_mag)
+        
+        # Squeeze extra dimension (1) if present (common in 2D architectures)
+        if pred_weighted_mask.dim() == 4 and pred_weighted_mask.shape[1] == 1:
+            pred_weighted_mask = pred_weighted_mask.squeeze(1)
+            
+        if (not torch.is_complex(pred_weighted_mask) and pred_weighted_mask.shape[1] == 2 * noisy_frames.shape[1]):
+            f = noisy_frames.shape[1]
+            mask_real = pred_weighted_mask[:, :f, :]
+            mask_imag = pred_weighted_mask[:, f:, :]
+            pred_weighted_mask = torch.complex(mask_real, mask_imag)
 
         if self.batching_strat == "pad":
             # If batching with zero-padding, apply a loss mask to the model output
@@ -197,6 +221,53 @@ class MagSpecTrainer(BaseTrainer):
             # Clip clean signal to length of recomposed preds
             clean_signal = clean_signal[:, :pred_wave.shape[-1]]
             loss = self.loss_function(pred_wave, clean_signal)
+
+        elif self.loss == "spec_hstl":
+            pred_real = pred_frames.real
+            pred_imag = pred_frames.imag
+            clean_real = clean_signal.real
+            clean_imag = clean_signal.imag
+
+            pred_mag = torch.sqrt(pred_real**2 + pred_imag**2 + 1e-12)
+            clean_mag = torch.sqrt(clean_real**2 + clean_imag**2 + 1e-12)
+
+            pred_real_c = pred_real / (pred_mag**0.7)
+            pred_imag_c = pred_imag / (pred_mag**0.7)
+            clean_real_c = clean_real / (clean_mag**0.7)
+            clean_imag_c = clean_imag / (clean_mag**0.7)
+
+            real_loss = self.loss_function(pred_real_c, clean_real_c)
+            imag_loss = self.loss_function(pred_imag_c, clean_imag_c)
+            mag_loss = self.loss_function(pred_mag.pow(0.3), clean_mag.pow(0.3))
+
+            pred_wave = self._reconstruct_wave(pred_real + 1j * pred_imag)
+            clean_wave = self._reconstruct_wave(clean_real + 1j * clean_imag)
+
+            clean_wave = (
+                torch.sum(clean_wave * pred_wave, dim=-1, keepdim=True)
+                * clean_wave
+                / (
+                    torch.sum(torch.square(clean_wave), dim=-1, keepdim=True)
+                    + self.spec_hstl_eps
+                )
+            )
+
+            sisnr = -torch.log10(
+                torch.norm(clean_wave, dim=-1, keepdim=True) ** 2
+                / (
+                    torch.norm(pred_wave - clean_wave, dim=-1, keepdim=True) ** 2
+                    + self.spec_hstl_eps
+                )
+                + self.spec_hstl_eps
+            ).mean()
+
+            loss = 30 * (real_loss + imag_loss) + 70 * mag_loss + sisnr
+        
+        if self.temporal_coherence_lambda and self.temporal_coherence_lambda > 0.0:
+            # Important: use the SAME mask used for inference (pred_weighted_mask),
+            # but if pad, ignore diffs that involve padded frames.
+            tc = self._temporal_coherence_loss(pred_weighted_mask, loss_mask if self.batching_strat == "pad" else None)
+            loss = loss + (self.temporal_coherence_lambda * tc)
 
         if self.activation_regularization:
             reg_penalty = 0
@@ -270,9 +341,15 @@ class MagSpecTrainer(BaseTrainer):
         # Convert noisy complex spectrogram to magnitude spectrogram
         noisy_frames_mag = torch.abs(noisy_frames)
         pred_weighted_mask = self.model(noisy_frames_mag)
+        if (not torch.is_complex(pred_weighted_mask)
+            and pred_weighted_mask.shape[1] == 2 * noisy_frames.shape[1]):
+            f = noisy_frames.shape[1]
+            mask_real = pred_weighted_mask[:, :f, :]
+            mask_imag = pred_weighted_mask[:, f:, :]
+            pred_weighted_mask = torch.complex(mask_real, mask_imag)
+
         pred_frames = noisy_frames * pred_weighted_mask
-        pred_wave = torch.istft(pred_frames, n_fft=self.n_fft, hop_length=self.hop_length,
-                                    win_length=self.frame_length, window=self.window, center=self.center)
+        pred_wave = self._reconstruct_wave(pred_frames)
         # Squeeze waves
         pred_wave, clean_wave = pred_wave.squeeze(), clean_wave.squeeze()
         # Trim clean wave to the length of predicted wave
@@ -409,3 +486,93 @@ class MagSpecTrainer(BaseTrainer):
                 self.best_epoch = epoch
         else:
             raise ValueError(f"reference metric must be in {self.header}")
+
+    def _highband_weight(self, F: int) -> torch.Tensor:
+        """
+        Returns a (1, F, 1) tensor with 0 below freq threshold and 1 above.
+        Cached on device.
+        """
+        if (not self.temporal_coherence_highband_only) or (self.temporal_coherence_freq_hz <= 0):
+            return torch.ones((1, F, 1), device=self.device)
+
+        # Bin resolution: sr/n_fft per bin (for one-sided STFT)
+        # Bin k corresponds to k * sr / n_fft
+        k0 = int(np.ceil(self.temporal_coherence_freq_hz * self.n_fft / self.sampling_rate))
+        k0 = max(0, min(F, k0))
+
+        w = torch.zeros((F,), device=self.device)
+        w[k0:] = 1.0
+        return w.view(1, F, 1)
+
+    def _temporal_coherence_loss(self, mask: torch.Tensor, loss_mask: Optional[torch.Tensor]) -> torch.Tensor:
+        """
+        mask: (B, F, T) real OR complex
+        loss_mask: (B, F, T) float in {0,1} for valid frames (only when pad), else None
+        """
+        # Work on a real-valued proxy:
+        # - if complex mask: use magnitude (stabilizes against phase flips)
+        # - if real mask: use directly (keeps sign information)
+        if torch.is_complex(mask):
+            m = torch.abs(mask)
+        else:
+            m = mask
+
+        # Need at least 2 frames
+        if m.shape[-1] < 2:
+            return torch.zeros((), device=self.device)
+
+        # Temporal diff (B,F,T-1)
+        d = m[:, :, 1:] - m[:, :, :-1]
+        if self.temporal_coherence_p == 1:
+            d = torch.abs(d)
+        else:
+            d = d * d
+
+        # High-band weighting (cheap, strong impact on metallic artifacts)
+        F = m.shape[1]
+        if self._tc_highband_weight_cached is None or self._tc_highband_weight_cached.shape[1] != F:
+            self._tc_highband_weight_cached = self._highband_weight(F)
+        d = d * self._tc_highband_weight_cached  # broadcasts to (B,F,T-1)
+
+        # If padding is used, we only penalize diffs where BOTH frames are valid
+        if loss_mask is not None:
+            # loss_mask: (B,F,T)
+            pair_mask = loss_mask[:, :, 1:] * loss_mask[:, :, :-1]  # (B,F,T-1)
+            d = d * pair_mask
+            denom = torch.sum(pair_mask) + 1e-8
+            return torch.sum(d) / denom
+
+        # Trim (no padding): simple mean
+        return torch.mean(d)
+
+    def _reconstruct_wave(self, frames):
+        """Inverse STFT that works also when preprocessing.center is False."""
+        if self.center:
+            return torch.istft(
+                frames,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                win_length=self.frame_length,
+                window=self.window,
+                center=self.center,
+            )
+
+        #questa parte è rotta
+        #RuntimeError: istft(CUDAComplexFloatType[16, 257, 368], n_fft=512, hop_length=160, win_length=320, window=torch.cuda.FloatTensor{[320]}, center=0, normalized=0, onesided=None, length=59040, return_complex=0) window overlap add min: 1
+        eps = 1e-4
+        window = self.window.clone()
+        window[0] = eps
+        window[-1] = eps
+
+        seq_len = frames.shape[-1]
+        expected_len = self.hop_length * (seq_len - 1) + self.frame_length
+
+        return torch.istft(
+            frames,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.frame_length,
+            window=window,
+            center=False,
+            length=expected_len,
+        )
