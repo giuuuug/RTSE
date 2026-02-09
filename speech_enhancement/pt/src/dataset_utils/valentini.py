@@ -78,9 +78,9 @@ class CustomValentiniLike(torch.utils.data.Dataset):
         random_seed, int : Random seed used for the random sampling of clips in case n_clips is not None.s
         '''
         super().__init__()
-        self.clean_files_path = clean_files_path
+        self.clean_files_path = Path(clean_files_path) if clean_files_path is not None else None
         self.set = set
-        self.noisy_files_path = noisy_files_path
+        self.noisy_files_path = Path(noisy_files_path)
         self.file_extension = file_extension
         self.sample_rate = sample_rate
         self.input_pipeline = input_pipeline

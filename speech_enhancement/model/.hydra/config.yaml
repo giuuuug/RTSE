@@ -18,7 +18,7 @@ model_specific:
   mask_activation: sigmoid
   causal: false
   n_fft: 512
-  n_bands: 64
+  subband_2: 64
   subband_1: 64
 dataset:
   dataset_name: valentini

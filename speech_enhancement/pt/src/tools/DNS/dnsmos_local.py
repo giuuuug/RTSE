@@ -148,9 +148,9 @@ def main(args):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', "--testset_dir", default='/home/mgiuliani/TESI/stm32ai-modelzoo-services/speech_enhancement/pt/src/tools/output', 
+    parser.add_argument('-t', "--testset_dir", default='/home/mgiuliani/TESI/RTSE/speech_enhancement/pt/src/tools/output', 
                         help='Path to the dir containing audio clips in .wav to be evaluated')
-    parser.add_argument('-o', "--csv_path", default="/home/mgiuliani/TESI/stm32ai-modelzoo-services/speech_enhancement/pt/src/tools/DNS/res.csv", help='Dir to the csv that saves the results')
+    parser.add_argument('-o', "--csv_path", default="/home/mgiuliani/TESI/RTSE/speech_enhancement/pt/src/tools/DNS/res.csv", help='Dir to the csv that saves the results')
     parser.add_argument('-p', "--personalized_MOS", action='store_true', 
                         help='Flag to indicate if personalized MOS score is needed or regular')
     

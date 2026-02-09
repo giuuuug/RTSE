@@ -12,6 +12,7 @@ import os
 from matplotlib.path import Path
 import numpy as np
 import soundfile as sf
+import onnx
 import onnxruntime as ort
 import librosa
 import librosa.display
@@ -40,6 +41,10 @@ class Inferencer():
         
         self.audio_files_list: list[Path] = self._get_audio_file_list()
         self.onnx_files_list: list[Path] = self._get_onnx_file_list()
+        self.model_stats = {
+            onnx_file: self._collect_model_stats(onnx_file)
+            for onnx_file in self.onnx_files_list
+        }
         
         self._run_inference()
     
@@ -99,8 +104,115 @@ class Inferencer():
         plt.savefig(out_path)
         plt.close()
 
+    def _collect_model_stats(self, model_path):
+        size_mb = os.path.getsize(model_path) / (1024 ** 2)
+        model = onnx.load(model_path)
+        try:
+            model = onnx.shape_inference.infer_shapes(model)
+        except Exception as exc:  # pragma: no cover - best-effort inference
+            print(f"Warning: shape inference failed for {os.path.basename(model_path)}: {exc}")
+        graph = model.graph
+        initializer_dims = {
+            init.name: tuple(int(dim) if isinstance(dim, int) and dim > 0 else 1 for dim in init.dims)
+            for init in graph.initializer
+        }
+        param_count = sum(self._prod(dims) for dims in initializer_dims.values())
+        shape_map = self._build_shape_map(graph)
+        macs = self._estimate_model_macs(graph, shape_map, initializer_dims)
+        return {'size_mb': size_mb, 'params': param_count, 'macs': macs}
+
+    def _build_shape_map(self, graph):
+        shape_map = {}
+        for value in list(graph.input) + list(graph.output) + list(graph.value_info):
+            tensor_type = value.type.tensor_type
+            dims = []
+            for dim in tensor_type.shape.dim:
+                dim_value = int(dim.dim_value) if hasattr(dim, 'dim_value') else 0
+                dims.append(dim_value if dim_value > 0 else 1)
+            if dims:
+                shape_map[value.name] = dims
+        for init in graph.initializer:
+            dims = [int(dim) if isinstance(dim, int) and dim > 0 else 1 for dim in init.dims]
+            if dims:
+                shape_map[init.name] = dims
+        return shape_map
+
+    def _prod(self, dims):
+        prod = 1
+        for dim in dims:
+            prod *= dim if dim > 0 else 1
+        return prod
+
+    def _dimension_from_shape(self, shape, index):
+        if not shape:
+            return 1
+        idx = index if index >= 0 else len(shape) + index
+        if idx < 0 or idx >= len(shape):
+            return 1
+        return shape[idx]
+
+    def _estimate_model_macs(self, graph, shape_map, initializer_dims):
+        macs = 0
+        for node in graph.node:
+            if node.op_type == 'Conv':
+                macs += self._conv_macs(node, shape_map, initializer_dims)
+            elif node.op_type == 'MatMul':
+                macs += self._matmul_macs(node, shape_map)
+            elif node.op_type == 'Gemm':
+                macs += self._gemm_macs(node, shape_map)
+        return macs
+
+    def _conv_macs(self, node, shape_map, initializer_dims):
+        if len(node.input) < 2:
+            return 0
+        weight_shape = initializer_dims.get(node.input[1])
+        if not weight_shape:
+            return 0
+        output_shape = shape_map.get(node.output[0])
+        if not output_shape:
+            return 0
+        batch = output_shape[0] if len(output_shape) > 0 else 1
+        out_channels = output_shape[1] if len(output_shape) > 1 else 1
+        out_spatial = self._prod(output_shape[2:]) if len(output_shape) > 2 else 1
+        kernel_spatial = self._prod(weight_shape[2:]) if len(weight_shape) > 2 else 1
+        in_channels = weight_shape[1] if len(weight_shape) > 1 else 1
+        return batch * out_channels * out_spatial * in_channels * kernel_spatial
+
+    def _matmul_macs(self, node, shape_map):
+        output_shape = shape_map.get(node.output[0], [])
+        if len(output_shape) < 2:
+            return 0
+        k = self._dimension_from_shape(shape_map.get(node.input[0], []), -1)
+        m = self._dimension_from_shape(output_shape, -2)
+        n = self._dimension_from_shape(output_shape, -1)
+        return m * n * k
+
+    def _gemm_macs(self, node, shape_map):
+        output_shape = shape_map.get(node.output[0], [])
+        if len(output_shape) < 2:
+            return 0
+        trans_a = self._get_attribute_value(node, 'transA', 0)
+        a_shape = shape_map.get(node.input[0], [])
+        k_index = -2 if trans_a else -1
+        k = self._dimension_from_shape(a_shape, k_index)
+        m = self._dimension_from_shape(output_shape, -2)
+        n = self._dimension_from_shape(output_shape, -1)
+        return m * n * k
+
+    def _get_attribute_value(self, node, name, default=0):
+        for attr in node.attribute:
+            if attr.name == name:
+                return int(attr.i) if hasattr(attr, 'i') else default
+        return default
+
     def _run_inference(self):
         for onnx_file in self.onnx_files_list:
+            stats = self.model_stats.get(onnx_file)
+            model_name = os.path.splitext(os.path.basename(onnx_file))[0]
+            if stats:
+                macs = f"{stats['macs']:,}" if stats['macs'] else "0"
+                print(f"[{model_name}] size={stats['size_mb']:.2f} MB | MACs={macs} | params={stats['params']:,}")
+            
             for audio_file in self.audio_files_list:
                 print(f"Processing {os.path.basename(audio_file)} with model {os.path.basename(onnx_file)}...")
                 

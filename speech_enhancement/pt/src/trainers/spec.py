@@ -546,33 +546,12 @@ class MagSpecTrainer(BaseTrainer):
         return torch.mean(d)
 
     def _reconstruct_wave(self, frames):
-        """Inverse STFT that works also when preprocessing.center is False."""
-        if self.center:
-            return torch.istft(
-                frames,
-                n_fft=self.n_fft,
-                hop_length=self.hop_length,
-                win_length=self.frame_length,
-                window=self.window,
-                center=self.center,
-            )
-
-        #questa parte è rotta
-        #RuntimeError: istft(CUDAComplexFloatType[16, 257, 368], n_fft=512, hop_length=160, win_length=320, window=torch.cuda.FloatTensor{[320]}, center=0, normalized=0, onesided=None, length=59040, return_complex=0) window overlap add min: 1
-        eps = 1e-4
-        window = self.window.clone()
-        window[0] = eps
-        window[-1] = eps
-
-        seq_len = frames.shape[-1]
-        expected_len = self.hop_length * (seq_len - 1) + self.frame_length
-
+        """Inverse STFT."""
         return torch.istft(
             frames,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             win_length=self.frame_length,
-            window=window,
-            center=False,
-            length=expected_len,
+            window=self.window,
+            center=self.center,
         )
