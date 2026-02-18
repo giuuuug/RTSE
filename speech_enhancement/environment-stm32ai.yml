@@ -4,6 +4,7 @@
 name: stm32ai
 channels:
   - pytorch
+  - nvidia
   - conda-forge
   - defaults
 dependencies:
@@ -15,9 +16,11 @@ dependencies:
   - onnxruntime
   - omegaconf
   - hydra-core
-  - pytorch
-  - torchvision
-  - torchaudio
+  - pytorch::pytorch
+  - pytorch::torchvision
+  - pytorch::torchaudio
+  # CUDA-enabled PyTorch (choose a version compatible with your cluster drivers)
+  - pytorch::pytorch-cuda=11.8
   - tf2onnx
   - pesq
   - pystoi
@@ -35,5 +38,5 @@ dependencies:
   - marshmallow
   - fsspec
   - colorama
-  
-  - pip:
+
+  - pip: []

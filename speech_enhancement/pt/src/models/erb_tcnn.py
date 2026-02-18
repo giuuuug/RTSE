@@ -39,20 +39,22 @@ class DepthwiseSeparableConv(nn.Module):
             stride=stride, padding=padding,
             dilation=dilation, groups=in_channels, bias=False
         )
-
+        
+        bn = nn.BatchNorm1d(in_channels)
+        
         pointwise_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1, bias=False)
         if causal:
             self.net = nn.Sequential(
                 depthwise_conv,
-                Chomp1d(padding),
-                nn.BatchNorm1d(in_channels),
+                bn,
                 act,
+                Chomp1d(padding),
                 pointwise_conv
             )
         else:
             self.net = nn.Sequential(
                 depthwise_conv,
-                nn.BatchNorm1d(in_channels),
+                bn,
                 act,
                 pointwise_conv
             )

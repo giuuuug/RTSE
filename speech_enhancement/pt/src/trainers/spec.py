@@ -68,7 +68,8 @@ class MagSpecTrainer(BaseTrainer):
                  device_memory_fraction: float = 0.5,
                  early_stopping: bool = False,
                  reference_metric: str = "pesq",
-                 early_stopping_patience: int = 20
+                 early_stopping_patience: int = 20,
+                 future_frame_prediction: bool = False,
                  ):
         super().__init__(model=model,
                          optimizer=optimizer,
@@ -107,7 +108,7 @@ class MagSpecTrainer(BaseTrainer):
         assert self.batching_strat in ["trim", "pad"], f"self.batching_strat must be one of 'trim', 'pad', was {self.batching_strat}"
         
         self.sampling_rate = sampling_rate # Needed for PESQ computation
-
+        self.future_frame_prediction = future_frame_prediction
         # Initialize metrics header, and handle reference metric / early stopping params
         self.header = ["train_loss", "val_mse", "pesq", "stoi", "snr", "si-snr"]
         self.early_stopping = early_stopping
@@ -175,16 +176,39 @@ class MagSpecTrainer(BaseTrainer):
             for h in self.hooks:
                 h.clear()
 
+
+        loss_mask = None
         if self.batching_strat == "pad":
             noisy_frames, clean_signal, sequence_lengths = batch
             noisy_frames, clean_signal = noisy_frames.to(self.device), clean_signal.to(self.device)
+            loss_mask = self._loss_mask(noisy_frames.shape, sequence_lengths=sequence_lengths).to(self.device)
         else:
             noisy_frames, clean_signal = batch
             noisy_frames, clean_signal = noisy_frames.to(self.device), clean_signal.to(self.device)
 
         # Convert noisy complex spectrogram to magnitude spectrogram
-        noisy_frames_mag = torch.abs(noisy_frames)
-        pred_weighted_mask = self.model(noisy_frames_mag)
+        noisy_frames_mag = torch.abs(noisy_frames)  # (B,F,T)
+
+        # --- NEW: future-frame prediction (shift di 1 frame) ---
+        # Se attivo: input = [0..T-2], applico mask su noisy [1..T-1], target = clean [1..T-1]
+        if self.future_frame_prediction:
+            if noisy_frames_mag.shape[-1] < 2:
+                # batch troppo corto, skip
+                return torch.zeros((), device=self.device)
+
+            model_in_mag = noisy_frames_mag[:, :, :-1]     # (B,F,T-1)
+            noisy_apply = noisy_frames[:, :, 1:]           # (B,F,T-1) complesso
+            clean_target = clean_signal[:, :, 1:]          # (B,F,T-1) complesso
+
+            if loss_mask is not None:
+                loss_mask = loss_mask[:, :, 1:]            # (B,F,T-1)
+        else:
+            model_in_mag = noisy_frames_mag                # (B,F,T)
+            noisy_apply = noisy_frames                      # (B,F,T)
+            clean_target = clean_signal                     # (B,F,T)
+
+        pred_weighted_mask = self.model(model_in_mag)       # (B,F,T) o (B,F,T-1)
+
         
         # Squeeze extra dimension (1) if present (common in 2D architectures)
         if pred_weighted_mask.dim() == 4 and pred_weighted_mask.shape[1] == 1:
@@ -196,16 +220,9 @@ class MagSpecTrainer(BaseTrainer):
             mask_imag = pred_weighted_mask[:, f:, :]
             pred_weighted_mask = torch.complex(mask_real, mask_imag)
 
-        if self.batching_strat == "pad":
-            # If batching with zero-padding, apply a loss mask to the model output
-            # so that we don't compute the loss on pad frames.
-            loss_mask = self._loss_mask(noisy_frames.shape, sequence_lengths=sequence_lengths)
-            loss_mask = loss_mask.to(self.device)
-            masked_pred_weighted_mask = pred_weighted_mask * loss_mask
-            pred_frames = noisy_frames * masked_pred_weighted_mask
-
-        else:
-            pred_frames = noisy_frames * pred_weighted_mask
+        if loss_mask is not None:
+            pred_weighted_mask = pred_weighted_mask * loss_mask
+        pred_frames = noisy_apply * pred_weighted_mask      # (B,F,T or T-1)
 
         if self.loss == "spec_mse":
             # Can't have MSE on complex values in torch
@@ -215,12 +232,20 @@ class MagSpecTrainer(BaseTrainer):
             loss = loss_r + loss_i
 
         elif self.loss in ["wave_mse", "wave_sisnr", "wave_snr"]:
-            pred_wave = torch.istft(pred_frames, n_fft=self.n_fft, hop_length=self.hop_length,
-                                    win_length=self.frame_length, window=self.window, center=self.center)
-            # Here, clean_signal should actually be a wave batch of shape (batch, wave_length)
-            # Clip clean signal to length of recomposed preds
-            clean_signal = clean_signal[:, :pred_wave.shape[-1]]
-            loss = self.loss_function(pred_wave, clean_signal)
+            pred_wave = torch.istft(pred_frames,
+                                    n_fft=self.n_fft,
+                                    hop_length=self.hop_length,
+                                    win_length=self.frame_length,
+                                    window=self.window,
+                                    center=self.center)
+            clean_wave = torch.istft(clean_target,
+                                     n_fft=self.n_fft,
+                                     hop_length=self.hop_length,
+                                     win_length=self.frame_length,
+                                     window=self.window,
+                                     center=self.center)
+            clean_wave = clean_wave[:, :pred_wave.shape[-1]]
+            loss = self.loss_function(pred_wave, clean_wave)
 
         elif self.loss == "spec_hstl":
             pred_real = pred_frames.real
@@ -338,9 +363,17 @@ class MagSpecTrainer(BaseTrainer):
         noisy_frames, clean_wave = batch
         noisy_frames = noisy_frames.to(self.device)
 
-        # Convert noisy complex spectrogram to magnitude spectrogram
-        noisy_frames_mag = torch.abs(noisy_frames)
-        pred_weighted_mask = self.model(noisy_frames_mag)
+        noisy_frames_mag = torch.abs(noisy_frames)  # (1,F,T)
+
+        # --- NEW: stesso shift anche in validazione ---
+        if self.future_frame_prediction and noisy_frames_mag.shape[-1] >= 2:
+            model_in_mag = noisy_frames_mag[:, :, :-1]
+            noisy_apply = noisy_frames[:, :, 1:]
+        else:
+            model_in_mag = noisy_frames_mag
+            noisy_apply = noisy_frames
+
+        pred_weighted_mask = self.model(model_in_mag)
         if (not torch.is_complex(pred_weighted_mask)
             and pred_weighted_mask.shape[1] == 2 * noisy_frames.shape[1]):
             f = noisy_frames.shape[1]
@@ -348,7 +381,7 @@ class MagSpecTrainer(BaseTrainer):
             mask_imag = pred_weighted_mask[:, f:, :]
             pred_weighted_mask = torch.complex(mask_real, mask_imag)
 
-        pred_frames = noisy_frames * pred_weighted_mask
+        pred_frames = noisy_apply * pred_weighted_mask
         pred_wave = self._reconstruct_wave(pred_frames)
         # Squeeze waves
         pred_wave, clean_wave = pred_wave.squeeze(), clean_wave.squeeze()
@@ -359,7 +392,7 @@ class MagSpecTrainer(BaseTrainer):
         denoised, clean_source = pred_wave.to("cpu"), clean_wave.to("cpu")
         # Back to numpy
         denoised = denoised.numpy()
-        clean_source = clean_source.numpy()
+        clean_source = clean_wave.to("cpu").numpy()
 
         valid_loss = np.mean((denoised - clean_source) ** 2)
 
