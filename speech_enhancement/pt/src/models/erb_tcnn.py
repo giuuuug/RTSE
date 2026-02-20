@@ -9,23 +9,28 @@ from collections import OrderedDict
 import numpy as np
 
 
-class Chomp1d(nn.Module):
-    def __init__(self, chomp_size):
-        super(Chomp1d, self).__init__()
-        self.chomp_size = chomp_size
+# class Chomp1d(nn.Module):
+#     def __init__(self, chomp_size):
+#         super(Chomp1d, self).__init__()
+#         self.chomp_size = chomp_size
 
-    def forward(self, x):
-        return x[:, :, :-self.chomp_size].contiguous()
+#     def forward(self, x):
+#         return x[:, :, :-self.chomp_size].contiguous()
 
 
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, dilation,
                  causal=False, layer_activation="relu"):
         super(DepthwiseSeparableConv, self).__init__()
+        self.padding_val = (kernel_size - 1) * dilation if causal else dilation        
         if causal:
-            padding = (kernel_size - 1) * dilation
+            #padding = (kernel_size - 1) * dilation
+            self.pad_layer = nn.ConstantPad1d((self.padding_val, 0), 0.0)
+            conv_padding = 0
         else:
-            padding = dilation
+            self.pad_layer = nn.Identity()
+            #padding = dilation
+            conv_padding = dilation
 
         if layer_activation == "prelu":
             act = nn.PReLU()
@@ -36,28 +41,23 @@ class DepthwiseSeparableConv(nn.Module):
 
         depthwise_conv = nn.Conv1d(
             in_channels, in_channels, kernel_size,
-            stride=stride, padding=padding,
+            stride=stride, padding=conv_padding,
             dilation=dilation, groups=in_channels, bias=False
         )
         
         bn = nn.BatchNorm1d(in_channels)
-        
         pointwise_conv = nn.Conv1d(in_channels, out_channels, kernel_size=1, bias=False)
+        
+        layers = []
         if causal:
-            self.net = nn.Sequential(
-                depthwise_conv,
-                bn,
-                act,
-                Chomp1d(padding),
-                pointwise_conv
-            )
-        else:
-            self.net = nn.Sequential(
-                depthwise_conv,
-                bn,
-                act,
-                pointwise_conv
-            )
+            layers.append(self.pad_layer)
+            
+        layers.append(depthwise_conv)
+        layers.append(bn)
+        layers.append(act)
+        layers.append(pointwise_conv)
+        
+        self.net = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.net(x)
@@ -147,13 +147,15 @@ class ERB(nn.Module):
         col_sums = erb_filters.sum(dim=0, keepdim=True).clamp_min(1e-8)  # (1, F_high)
         erb_filters_col_norm = erb_filters / col_sums
 
-        self.erb_fc = nn.Linear(nfreqs - self.erb_subband_1, self.erb_subband_2, bias=False)
-        self.ierb_fc = nn.Linear(self.erb_subband_2, nfreqs - self.erb_subband_1, bias=False)
+        #self.erb_fc = nn.Linear(nfreqs - self.erb_subband_1, self.erb_subband_2, bias=False)
+        #self.ierb_fc = nn.Linear(self.erb_subband_2, nfreqs - self.erb_subband_1, bias=False)
+        self.erb_fc = nn.Conv1d(nfreqs - self.erb_subband_1, self.erb_subband_2, kernel_size=1, bias=False)
+        self.ierb_fc = nn.Conv1d(self.erb_subband_2, nfreqs - self.erb_subband_1, kernel_size=1, bias=False)
 
-        self.erb_fc.weight = nn.Parameter(erb_filters_norm, requires_grad=learnable)
+        self.erb_fc.weight = nn.Parameter(erb_filters_norm.unsqueeze(-1), requires_grad=learnable)
 
         syn_filters = erb_filters_col_norm.T
-        self.ierb_fc.weight = nn.Parameter(syn_filters, requires_grad=learnable)
+        self.ierb_fc.weight = nn.Parameter(syn_filters.unsqueeze(-1), requires_grad=learnable)
 
     def hz2erb(self, freq_hz):
         return 21.4 * np.log10(0.00437 * freq_hz + 1.0)
@@ -190,19 +192,18 @@ class ERB(nn.Module):
         x_low = x[:, :self.erb_subband_1, :]
         x_high = x[:, self.erb_subband_1:, :]
 
-        xh = x_high.transpose(1, 2)
-        yh = self.erb_fc(xh)
-        yh = yh.transpose(1, 2)
-
+        #xh = x_high.transpose(1, 2)
+        #yh = self.erb_fc(xh)
+        #yh = yh.transpose(1, 2)
+        yh = self.erb_fc(x_high)
+        
         return torch.cat([x_low, yh], dim=1)
 
     def bs(self, x_erb: torch.Tensor) -> torch.Tensor:
         x_low = x_erb[:, :self.erb_subband_1, :]
         x_high_erb = x_erb[:, self.erb_subband_1:, :]
 
-        yh = x_high_erb.transpose(1, 2)
-        xh = self.ierb_fc(yh)
-        xh = xh.transpose(1, 2)
+        xh = self.ierb_fc(x_high_erb)
 
         return torch.cat([x_low, xh], dim=1)
 

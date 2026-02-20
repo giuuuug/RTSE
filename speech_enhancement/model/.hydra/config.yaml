@@ -79,7 +79,7 @@ quantization:
   num_quantization_samples: 500
   random_seed: 42
   noisy_quantization_files_path: null
-  static_sequence_length: 20
+  static_sequence_length: 40
   static_axis_name: seq_len
   granularity: per_channel
   reduce_range: false

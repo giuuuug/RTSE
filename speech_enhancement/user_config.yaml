@@ -126,7 +126,7 @@ quantization:
   # E.g, if the dynamic input shape model has input shape[?, 257, ?] 
   # The static shape model will have input shape [1, 257, 40] 
   # if static_sequence_length is 40. 
-  static_sequence_length: 20 
+  static_sequence_length: 40 
   static_axis_name: "seq_len"
   
   # The following parameters are passed to ONNXruntime's quantize_static function

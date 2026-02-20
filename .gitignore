@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 experiment_outputs/
 speech_enhancement/pt/src/tools/DNS/res.csv
+speech_enhancement/pt/src/tools/onnx/
+speech_enhancement/pt/src/tools/output/
