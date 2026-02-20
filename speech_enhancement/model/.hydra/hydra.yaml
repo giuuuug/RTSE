@@ -129,18 +129,18 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /mnt/beegfs/mgiuliani/1141120/RTSE/speech_enhancement
+    cwd: /mnt/beegfs/mgiuliani/1167517/RTSE/speech_enhancement
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /mnt/beegfs/mgiuliani/1141120/RTSE/speech_enhancement
+    - path: /mnt/beegfs/mgiuliani/1167517/RTSE/speech_enhancement
       schema: file
       provider: main
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /mnt/beegfs/mgiuliani/1141120/RTSE/speech_enhancement/pt/src/experiment_outputs/2026_02_08_12_14_08
+    output_dir: /mnt/beegfs/mgiuliani/1167517/RTSE/speech_enhancement/pt/src/experiment_outputs/2026_02_19_11_44_47
     choices:
       hydra/env: default
       hydra/callbacks: null

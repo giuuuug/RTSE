@@ -87,6 +87,17 @@ class MagSpecTorchEvaluator(BaseTorchEvaluator):
         self.window = self.window.to(self.device)
 
 
+    def _reconstruct_wave(self, frames):
+        """Inverse STFT."""
+        return torch.istft(
+            frames,
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.frame_length,
+            window=self.window,
+            center=self.center,
+        )
+    
     def _run_evaluation_step(self, batch):
         noisy_frames, clean_wave = batch
         noisy_frames = noisy_frames.to(self.device)
@@ -95,8 +106,7 @@ class MagSpecTorchEvaluator(BaseTorchEvaluator):
         noisy_frames_mag = torch.abs(noisy_frames)
         pred_weighted_mask = self.model(noisy_frames_mag)
         pred_frames = noisy_frames * pred_weighted_mask
-        pred_wave = torch.istft(pred_frames, n_fft=self.n_fft, hop_length=self.hop_length,
-                                    win_length=self.frame_length, window=self.window, center=self.center)
+        pred_wave = self._reconstruct_wave(pred_frames)
         # Squeeze waves
         pred_wave, clean_wave = pred_wave.squeeze(), clean_wave.squeeze()
         # Trim clean wave to the length of predicted wave

@@ -1,5 +1,5 @@
 general:
-  project_name: erb_tcnn
+  project_name: erb_tcnn_c
   logs_dir: logs
   saved_models_dir: saved_models
   gpu_memory_limit: 0.9
@@ -16,7 +16,7 @@ model_specific:
   tcn_latent_dim: 256
   init_dilation: 2
   mask_activation: sigmoid
-  causal: false
+  causal: true
   n_fft: 512
   n_bands: 64
   subband_1: 64
@@ -39,7 +39,7 @@ preprocessing:
   peak_normalize: false
   sample_rate: 16000
   n_fft: 512
-  hop_length: 160
+  hop_length: 80
   win_length: 320
   window: hann
   center: true
@@ -50,6 +50,7 @@ training:
   optimizer: Adam
   optimizer_arguments:
     lr: 0.001
+    weight_decay: 1.0e-05
   loss: spec_hstl
   batching_strategy: pad
   num_dataloader_workers: 8
@@ -69,7 +70,7 @@ training:
   snapshot_path: null
   ckpt_path: ckpts/
   logs_filename: training_logs.csv
-  opset_version: 17
+  opset_version: 18
 evaluation:
   logs_path: eval_logs/
   device: cuda:0
